@@ -1,0 +1,70 @@
+#pragma once
+
+#include <cstdint>
+
+namespace config {
+	
+enum class Response {
+	ACK = 0x06,
+	NACK = 0x15,
+	ERR = 0x45,
+	WRONG = 0x57
+};
+
+enum class Commands {
+	GET_SD_STATUS = 1,
+  READ_SD = 2,
+  WRITE_SD = 3,
+  ERASE_SD = 4,
+	READ_MPU = 5
+};
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sd_num;
+} GET_SD_STATUS_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sd_num;
+} GET_SD_STATUS_RESPONSE_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sd_num;
+	uint32_t addr;
+	uint8_t quarter;
+} READ_SD_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t data[128];
+} READ_SD_RESPONSE_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sd_num;
+	uint32_t addr;
+	uint8_t quarter;
+	uint8_t data[128];
+} WRITE_SD_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sd_num;
+	uint32_t addr_start;
+	uint32_t addr_end;
+} ERASE_SD_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t mpu_num;
+} READ_MPU_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	int16_t B_X;
+	int16_t B_Y;
+	int16_t B_Z;
+	int16_t G_X;
+	int16_t G_Y;
+	int16_t G_Z;
+	int16_t A_X;
+	int16_t A_Y;
+	int16_t A_Z;
+	uint16_t T;
+} READ_MPU_RESPONSE_t;
+	
+}
