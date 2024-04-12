@@ -1,6 +1,5 @@
 *.opt
 *.uvopt
-#*.uvoptx
 *.uvgui
 *.uvgui.*
 *.uvguix.*
@@ -32,11 +31,11 @@
 *.__i
 *._ii
 
-*/Listings/*
-*/Objects/*
-*/DebugConfig/*
+Listings/*
+Objects/*
+DebugConfig/*
 
-#*.ini
+*.ini
 
 *.build_log.htm
 *.cdb
