@@ -1,0 +1,14 @@
+{
+    "python.testing.pytestArgs": [
+        ".",
+        "-s",
+        "--no-header",
+        "--no-summary",
+        "-rN",
+         "-q"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "editor.foldingStrategy": "indentation",
+    "python.analysis.typeCheckingMode": "basic"
+}

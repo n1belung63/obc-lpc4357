@@ -1,0 +1,52 @@
+version: 1
+disable_existing_loggers: False
+
+
+formatters:
+  default_formatter:
+    format: "[{asctime}] - {message}"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+    style: "{"
+
+filters:
+  info_filter:
+    (): logging_services.InfoLogFilter
+
+handlers:
+  info_console_handler:
+    class: logging.StreamHandler
+    formatter: default_formatter
+    level: INFO
+    stream:  "ext://sys.stdout"
+    filters: [info_filter]
+
+  error_console_handler:
+    class: logging.StreamHandler
+    formatter: default_formatter
+    level: WARNING
+    stream:  "ext://sys.stderr"
+
+  info_file_handler:
+    class: logging_services.LogRotatiingFileHandler
+    formatter: default_formatter
+    level: INFO
+    filename: Logs/test_drivers_info.log
+    when: midnight
+    utc: False
+    backupCount: 365
+    filters: [info_filter]
+
+  error_file_handler:
+    class: logging_services.LogRotatiingFileHandler
+    formatter: default_formatter
+    level: WARNING
+    filename: Logs/test_drivers_info.log
+    when: midnight
+    utc: False
+    backupCount: 365
+
+
+loggers:
+  test_drivers:
+    level: INFO
+    handlers: [info_console_handler, error_console_handler, info_file_handler, error_file_handler]
