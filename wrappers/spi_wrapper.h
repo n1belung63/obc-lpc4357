@@ -17,18 +17,14 @@ extern "C" {
 extern volatile void _delay_ms(uint32_t delay);
 
 namespace comm {
-
-#define SPI_BAUDRATE	12500000
-#define SPI_ATTEMPTS_COUNT 100
-	
-#define SPI_ERROR_TRANSFER_INCOMPLETE	(ARM_DRIVER_ERROR_SPECIFIC - 10)
-#define SPI_ERROR_DATA_COUNT_INCORRECT	(ARM_DRIVER_ERROR_SPECIFIC - 11)
-
 	
 template <board::Spi num>
 class Spi : public Singleton<Spi<num>> {
 	friend class Singleton<Spi<num>>;
 public:
+	static constexpr int32_t  ERROR_CODE_TRANSFER_INCOMPLETE = (ARM_DRIVER_ERROR_SPECIFIC - 10);
+	static constexpr int32_t  ERROR_CODE_DATA_COUNT_INCORRECT = (ARM_DRIVER_ERROR_SPECIFIC - 11);
+
 	int32_t Write(const void *data_out, uint16_t length);
 	int32_t Read(void *data_in, uint16_t length);
 	int32_t Transfer(const void *data_out, void *data_in, uint16_t length);
@@ -55,6 +51,9 @@ public:
 		return drv_->Control(ARM_SPI_CONTROL_SS, ARM_SPI_SS_INACTIVE);
 	}
 private:
+	static constexpr uint32_t ATTEMPTS_COUNT = 100;
+	static constexpr uint32_t BAUDRATE = 12500000;
+
 	const Spi & operator=(const Spi &) = delete;
 	constexpr Spi();
 	int32_t Init();
@@ -108,7 +107,7 @@ int32_t Spi<num>::Init() {
 											ARM_SPI_MSB_LSB |
 											ARM_SPI_SS_MASTER_UNUSED |
 											ARM_SPI_DATA_BITS(8),
-											SPI_BAUDRATE);
+											BAUDRATE);
 	
 	if (res != ARM_DRIVER_OK)
 		return res;
@@ -132,16 +131,16 @@ int32_t Spi<num>::Transfer(const void *data_out, void *data_in, uint16_t length)
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < SPI_ATTEMPTS_COUNT)
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
 		_delay_ms(1);
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
-		return SPI_ERROR_TRANSFER_INCOMPLETE;
+		return ERROR_CODE_TRANSFER_INCOMPLETE;
 	 
 	spi_event_ = 0U;
 	
 	if(drv_->GetDataCount() != length)
-		return SPI_ERROR_DATA_COUNT_INCORRECT;
+		return ERROR_CODE_DATA_COUNT_INCORRECT;
 	
 	return ARM_DRIVER_OK;
 }
@@ -158,16 +157,16 @@ int32_t Spi<num>::Write(const void *data_out, uint16_t length) {
 	if (res != ARM_DRIVER_OK)
 		return res;
 
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < SPI_ATTEMPTS_COUNT)
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
 		_delay_ms(1);
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
-		return SPI_ERROR_TRANSFER_INCOMPLETE;
+		return ERROR_CODE_TRANSFER_INCOMPLETE;
 	 
 	spi_event_ = 0U;
 	
 	if(drv_->GetDataCount() != length)
-		return SPI_ERROR_DATA_COUNT_INCORRECT;
+		return ERROR_CODE_DATA_COUNT_INCORRECT;
 	
 	return ARM_DRIVER_OK;
 }
@@ -183,16 +182,16 @@ int32_t Spi<num>::Read(void *data_in, uint16_t length) {
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < SPI_ATTEMPTS_COUNT)
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
 		_delay_ms(1);
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
-		return SPI_ERROR_TRANSFER_INCOMPLETE;
+		return ERROR_CODE_TRANSFER_INCOMPLETE;
 	 
 	spi_event_ = 0U;
 	
 	if(drv_->GetDataCount() != length)
-		return SPI_ERROR_DATA_COUNT_INCORRECT;
+		return ERROR_CODE_DATA_COUNT_INCORRECT;
 	
 	return ARM_DRIVER_OK;
 }

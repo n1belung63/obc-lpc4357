@@ -13,19 +13,20 @@ extern volatile void _delay_ms(uint32_t delay);
 
 namespace comm {
 
-#define I2C_ATTEMPTS_COUNT	100
-
-#define I2C_ERROR_TRANSFER_INCOMPLETE             (ARM_DRIVER_ERROR_SPECIFIC - 10)
-#define I2C_ERROR_DATA_COUNT_INCORRECT            (ARM_DRIVER_ERROR_SPECIFIC - 11)
-
 template <board::I2c num>
 class I2c : public Singleton<I2c<num>> {
 	friend class Singleton<I2c<num>>;
 public:
+	static constexpr int32_t ERROR_CODE_OK = 0;
+	static constexpr int32_t  ERROR_CODE_TRANSFER_INCOMPLETE = (ARM_DRIVER_ERROR_SPECIFIC - 10);
+	static constexpr int32_t  ERROR_CODE_DATA_COUNT_INCOMPLETE = (ARM_DRIVER_ERROR_SPECIFIC - 11);
+
 	int32_t Clear();
 	int32_t Write(const uint8_t addr, uint8_t* data, uint16_t length);
 	int32_t Read(const uint8_t addr, uint8_t* data, uint16_t length);
 private:
+	static constexpr uint32_t ATTEMPTS_COUNT = 100;
+
 	const I2c & operator=(const I2c &) = delete;
 	I2c();
 	int32_t Init();
@@ -106,16 +107,16 @@ int32_t I2c<num>::Write(const uint8_t addr, uint8_t* data, uint16_t length) {
 	if (res != ARM_DRIVER_OK)
 		return res;
 			
-	while ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_DONE) == 0U && ++attempts < I2C_ATTEMPTS_COUNT)
+	while ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_DONE) == 0U && ++attempts < ATTEMPTS_COUNT)
 		_delay_ms(1);
 		
 	if ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_INCOMPLETE) != 0U)
-		return I2C_ERROR_TRANSFER_INCOMPLETE;
+		return ERROR_CODE_TRANSFER_INCOMPLETE;
  
 	i2c_event_ = 0U;
 	
 	if(drv_->GetDataCount() != length)
-		return I2C_ERROR_DATA_COUNT_INCORRECT;
+		return ERROR_CODE_DATA_COUNT_INCOMPLETE;
 	
 	return ARM_DRIVER_OK;
 }
@@ -137,16 +138,16 @@ int32_t I2c<num>::Read(const uint8_t addr, uint8_t* data, uint16_t length) {
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	while ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_DONE) == 0U && ++attempts < I2C_ATTEMPTS_COUNT)
+	while ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_DONE) == 0U && ++attempts < ATTEMPTS_COUNT)
 		_delay_ms(1);
 	
 	if ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_INCOMPLETE) != 0U)
-		return I2C_ERROR_TRANSFER_INCOMPLETE;
+		return ERROR_CODE_TRANSFER_INCOMPLETE;
 	
 	i2c_event_ = 0U;
 	
 	if(drv_->GetDataCount() != length)
-		return I2C_ERROR_DATA_COUNT_INCORRECT;
+		return ERROR_CODE_DATA_COUNT_INCOMPLETE;
 	
 	return ARM_DRIVER_OK;
 }

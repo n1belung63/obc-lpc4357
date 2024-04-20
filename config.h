@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace config {
+namespace debug_config {
 	
 enum class Response {
 	ACK = 0x06,

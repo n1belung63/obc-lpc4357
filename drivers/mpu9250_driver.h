@@ -28,10 +28,11 @@ template <board::MpuAddr addr>
 class Mpu9250 : public Singleton<Mpu9250<addr>> {
 	friend class Singleton<Mpu9250<addr>>;
 public:
-	int32_t Read(MPU9250_DATA_t *data);
-
 	static constexpr int32_t ERROR_CODE_OK = 0;
 
+	int32_t Read(MPU9250_DATA_t *data);
+
+	int32_t GetLastErrorCode();
 private:
 	static constexpr uint8_t MAG_I2C_ADDR = 0x0C;
 	static constexpr uint8_t I2C_READ_FLAG = 0x80;
@@ -101,7 +102,7 @@ private:
 	uint8_t addr_;
 	using IntI2C = comm::I2c<board::I2c::kInt>;
 	IntI2C& i2c_;
-	
+	int32_t err_code_;	
 };
 
 template <board::MpuAddr addr>
@@ -111,63 +112,63 @@ Mpu9250<addr>::Mpu9250() : addr_(static_cast<uint8_t>(addr)), i2c_(Singleton<Int
 
 template <board::MpuAddr addr>
 int32_t Mpu9250<addr>::Init() {
-	int32_t res;
 	uint8_t data_write[2] = {0};
 		
 	CombineRegAndData(REG_PWR_MGMT_1, MASK_PWR_MGMT_1_H_RESET, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(500);
 			
 	CombineRegAndData(REG_PWR_MGMT_1, MASK_PWR_MGMT_1_INT_OSC, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(150);
 	
 	CombineRegAndData(REG_PWR_MGMT_1, MASK_PWR_MGMT_1_AUTO_SEL, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(100);
 	
 	CombineRegAndData(REG_GYRO_CONFIG, MASK_GYRO_CONFIG, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(100);
 	
 	CombineRegAndData(REG_ACCEL_CONFIG, MASK_ACCEL_CONFIG, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(30);
 	
 	CombineRegAndData(REG_CONFIG, MASK_CONFIG_250_HZ, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(30);
 	
 	CombineRegAndData(REG_SMPLRT_DIV, MASK_SMPLRT_DIV, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(30);
 	
 	CombineRegAndData(REG_USER_CTRL, MASK_USER_CTRL_I2C_MST_EN, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(10);
 	
 	CombineRegAndData(REG_I2C_MST_CTRL, MASK_I2C_MST_CTRL_400_KHZ, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	_delay_ms(100);
 			
-	res = Write(REG_MAG_CNTL2, (uint8_t[1]){ MASK_MAG_CNTL2_RESET }, 1);
-	if (res != ERROR_CODE_OK) return res;
+	err_code_ = Write(REG_MAG_CNTL2, (uint8_t[1]){ MASK_MAG_CNTL2_RESET }, 1);
+	if (err_code_ != ERROR_CODE_OK) return err_code_;
 	_delay_ms(30);
 	
-	res = Write(REG_MAG_CNTL1, (uint8_t[1]){ MASK_MAG_CNTL1_CONT_MEAS_MODE_16_BIT }, 1);
-	if (res != ERROR_CODE_OK) return res;
+	err_code_ = Write(REG_MAG_CNTL1, (uint8_t[1]){ MASK_MAG_CNTL1_CONT_MEAS_MODE_16_BIT }, 1);
+	if (err_code_ != ERROR_CODE_OK) return err_code_;
 	_delay_ms(30);
 	
-	return ERROR_CODE_OK;
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
 }
 
 template <board::MpuAddr addr>
@@ -175,25 +176,24 @@ int32_t Mpu9250<addr>::Read(MPU9250_DATA_t* data) {
 	uint8_t data_control;
 	uint8_t data_write[2];
 	uint8_t response[RESPONSE_SIZE];
-	int32_t res;
 	
 	CombineRegAndData(REG_I2C_SLV0_ADDR, MAG_I2C_ADDR | I2C_READ_FLAG, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	
 	CombineRegAndData(REG_I2C_SLV0_REG, REG_MAG_XOUT_L, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 
 	CombineRegAndData(REG_I2C_SLV0_CTRL, MASK_I2C_SLV0_CTRL, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	
 	data_control = REG_ACCEL_XOUT_H;
-	res = i2c_.Write(addr_, (&data_control), 1);
-	if (res != ARM_DRIVER_OK) return res;
-	res = i2c_.Read(addr_, response, RESPONSE_SIZE);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, (&data_control), 1);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
+	err_code_ = i2c_.Read(addr_, response, RESPONSE_SIZE);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 
 	data->A_X = ((int16_t)response[0]<<8)|response[1];
 	data->A_Y = ((int16_t)response[2]<<8)|response[3];
@@ -209,32 +209,38 @@ int32_t Mpu9250<addr>::Read(MPU9250_DATA_t* data) {
 	data->B_Y = ((int16_t)response[17]<<8)|response[16];
 	data->B_Z = ((int16_t)response[19]<<8)|response[18];
 
-	return ERROR_CODE_OK;
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
 }
 
 
 template <board::MpuAddr addr>
 int32_t Mpu9250<addr>::Write(uint8_t reg, uint8_t buffer[], uint8_t count) {
 	uint8_t data_write[2] = {0};
-	int32_t res;
 
 	CombineRegAndData(REG_I2C_SLV0_ADDR, MAG_I2C_ADDR, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 			
 	CombineRegAndData(REG_I2C_SLV0_REG, reg, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	
 	CombineRegAndData(REG_I2C_SLV0_DO, *buffer, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	
 	CombineRegAndData(REG_I2C_SLV0_CTRL, MASK_I2C_SLV0_I2C_SLV0_EN | count, data_write);
-	res = i2c_.Write(addr_, data_write, 2);
-	if (res != ARM_DRIVER_OK) return res;
+	err_code_ = i2c_.Write(addr_, data_write, 2);
+	if (err_code_ != ARM_DRIVER_OK) return err_code_;
 	
-	return ERROR_CODE_OK;
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
+}
+
+template <board::MpuAddr addr>
+int32_t Mpu9250<addr>::GetLastErrorCode() {
+	return err_code_;
 }
 
 }

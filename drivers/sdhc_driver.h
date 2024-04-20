@@ -3,20 +3,10 @@
 #include "../singelton.h"
 #include "../wrappers/spi_wrapper.h"
 #include "../board_settings.h"
+#include "../board_api.h"
 
 #include <cstdint>
 #include <cstring>
-
-#define SD_ERROR_NOT_IN_IDLE_STATE		(ARM_DRIVER_ERROR_SPECIFIC - 21)
-#define SD_ERROR_SD_NOT_READY					(ARM_DRIVER_ERROR_SPECIFIC - 22)
-#define SD_ERROR_ERROR_IN_R7_RESP			(ARM_DRIVER_ERROR_SPECIFIC - 23)
-#define SD_ERROR_WRONG_REQUEST_FORMAT	(ARM_DRIVER_ERROR_SPECIFIC - 24)
-#define SD_ERROR_ERROR_WRITING_BLOCK	(ARM_DRIVER_ERROR_SPECIFIC - 25)
-#define SD_ERROR_ERROR_READING_BLOCK	(ARM_DRIVER_ERROR_SPECIFIC - 26)
-#define SD_ERROR_BUSY_SIGNAL_TIMEOUT	(ARM_DRIVER_ERROR_SPECIFIC - 27)
-#define SD_ERROR_NO_RESP_AFTER_R1			(ARM_DRIVER_ERROR_SPECIFIC - 28)
-#define SD_ERROR_ERROR_IN_TOKEN				(ARM_DRIVER_ERROR_SPECIFIC - 29)
-#define SD_ERROR_DATA_ERROR						(ARM_DRIVER_ERROR_SPECIFIC - 30)
 
 extern volatile void _delay_ms(uint32_t delay);
 
@@ -40,10 +30,24 @@ class Sd : public Singleton<Sd<num>> {
 	friend class Singleton<Sd<num>>;
 public:
 	static constexpr uint32_t BLOCK_LENGTH = 512;
-	static constexpr int32_t SD_DRIVER_OK = 0;
+
+	static constexpr int32_t ERROR_CODE_OK = 0;
+	static constexpr int32_t ERROR_CODE_NOT_IN_IDLE_STATE = (ARM_DRIVER_ERROR_SPECIFIC - 21);
+	static constexpr int32_t ERROR_CODE_SD_NOT_READY = (ARM_DRIVER_ERROR_SPECIFIC - 22);
+	static constexpr int32_t ERROR_CODE_ERROR_IN_R7_RESP = (ARM_DRIVER_ERROR_SPECIFIC - 23);
+	static constexpr int32_t ERROR_CODE_WRONG_REQUEST_FORMAT = (ARM_DRIVER_ERROR_SPECIFIC - 24);
+	static constexpr int32_t ERROR_CODE_ERROR_WRITING_BLOCK = (ARM_DRIVER_ERROR_SPECIFIC - 25);
+	static constexpr int32_t ERROR_CODE_ERROR_READING_BLOCK = (ARM_DRIVER_ERROR_SPECIFIC - 26);
+	static constexpr int32_t ERROR_CODE_BUSY_SIGNAL_TIMEOUT = (ARM_DRIVER_ERROR_SPECIFIC - 27);
+	static constexpr int32_t ERROR_CODE_NO_RESP_AFTER_R1 = (ARM_DRIVER_ERROR_SPECIFIC - 28);
+	static constexpr int32_t ERROR_CODE_ERROR_IN_TOKEN = (ARM_DRIVER_ERROR_SPECIFIC - 29);
+	static constexpr int32_t ERROR_CODE_DATA_ERROR = (ARM_DRIVER_ERROR_SPECIFIC - 30);
 
 	int32_t ReadSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]);
 	int32_t WriteSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]);
+
+	int32_t GetLastErrorCode();
+
 private:
 	static constexpr uint8_t TEMP0 = 0xFF;
 
@@ -120,6 +124,7 @@ private:
 	SD_t* sd_;
 	using Spi = comm::Spi<board::Spi::kSd>;	
 	Spi& spi_;
+	int32_t err_code_ = ERROR_CODE_OK;
 };
 
 
@@ -143,156 +148,167 @@ template <board::Sd num>
 int32_t Sd<num>::Init() {
 	assert(sd_!=NULL);
 	
-	int32_t res;
 	uint8_t r1, r37[5], cmdAttempts = 0;
 
 	/* Run power up sequence */
-	res = spi_.SlaveSelectDisableGpio(sd_->sd_ss_port, sd_->sd_ss_pin);
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.SlaveSelectDisableGpio(sd_->sd_ss_port, sd_->sd_ss_pin);
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
 	for(uint8_t i = 0; i < SD_INIT_CYCLES; i++) {
-		res = spi_.Write(&TEMP0, sizeof(uint8_t));
-		if(res!=ARM_DRIVER_OK)
-			return res;
+		err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+		if(err_code_!=ARM_DRIVER_OK)
+			return err_code_;
 	}
 
 	/* Go Idle state (CMD0) */
-	res = CommandWrapped(CMD0, CMD0_ARG, CMD0_CRC, SdResponse::R1, &r1);
-	if(res!=SD_DRIVER_OK) 
-		return res;
+	err_code_ = CommandWrapped(CMD0, CMD0_ARG, CMD0_CRC, SdResponse::R1, &r1);
+	if(err_code_!=ERROR_CODE_OK) 
+		return err_code_;
 	
 	while(r1 != SD_IN_IDLE_STATE && ++cmdAttempts<CMD0_MAX_ATTEMPTS) {	
-		res = CommandWrapped(CMD0, CMD0_ARG, CMD0_CRC, SdResponse::R1, &r1);
-		if(res!=SD_DRIVER_OK)
-			return res;
+		err_code_ = CommandWrapped(CMD0, CMD0_ARG, CMD0_CRC, SdResponse::R1, &r1);
+		if(err_code_!=ERROR_CODE_OK)
+			return err_code_;
 	}
 	
-	if(cmdAttempts == CMD0_MAX_ATTEMPTS)
-		return SD_ERROR_NOT_IN_IDLE_STATE;
+	if(cmdAttempts == CMD0_MAX_ATTEMPTS) {
+		err_code_ = ERROR_CODE_NOT_IN_IDLE_STATE;
+		return err_code_;
+	}
 	
 	_delay_ms(1);
 	
 	/* Send Interface Conditions (CDM8) */
-	res = CommandWrapped(CMD8, CMD8_ARG, CMD8_CRC, SdResponse::R7, r37);
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = CommandWrapped(CMD8, CMD8_ARG, CMD8_CRC, SdResponse::R7, r37);
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	if(r37[0] != SD_IN_IDLE_STATE)
-		return SD_ERROR_NOT_IN_IDLE_STATE;
+	if(r37[0] != SD_IN_IDLE_STATE) {
+		err_code_ = ERROR_CODE_NOT_IN_IDLE_STATE;
+		return err_code_;
+	}
 	
-	if(r37[4] != 0xAA)
-		return SD_ERROR_ERROR_IN_R7_RESP;
+	if(r37[4] != 0xAA) {
+		err_code_ = ERROR_CODE_ERROR_IN_R7_RESP;
+		return err_code_;
+	}
 
 	cmdAttempts = 0;
 	do {
 		/* Send application command (CMD55) */
-		res = CommandWrapped(CMD55, CMD55_ARG, CMD55_CRC, SdResponse::R1, &r1);
-		if(res!=SD_DRIVER_OK)
-			return res;
+		err_code_ = CommandWrapped(CMD55, CMD55_ARG, CMD55_CRC, SdResponse::R1, &r1);
+		if(err_code_!=ERROR_CODE_OK)
+			return err_code_;
 		
 		if(SD_R1_NO_ERROR(r1)) {
 			/* Send operating condition (ACMD41) */			
-			res = CommandWrapped(ACMD41, ACMD41_ARG, ACMD41_CRC, SdResponse::R1, &r1);
-			if(res!=SD_DRIVER_OK)
-				return res;
+			err_code_ = CommandWrapped(ACMD41, ACMD41_ARG, ACMD41_CRC, SdResponse::R1, &r1);
+			if(err_code_!=ERROR_CODE_OK)
+				return err_code_;
 		}
 		_delay_ms(1);
 	} while(r1 != SD_READY && ++cmdAttempts<CMD55_MAX_ATTEMPTS);
 
-	if(cmdAttempts == CMD55_MAX_ATTEMPTS)
-		return SD_ERROR_SD_NOT_READY;
+	if(cmdAttempts == CMD55_MAX_ATTEMPTS) {
+		err_code_ = ERROR_CODE_SD_NOT_READY;
+		return err_code_;
+	}
 	
 	_delay_ms(1);
 	
 	/* Reads OCR from SD Card (CMD58) */
-	res = CommandWrapped(CMD58, CMD58_ARG, CMD58_CRC, SdResponse::R3, r37);
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = CommandWrapped(CMD58, CMD58_ARG, CMD58_CRC, SdResponse::R3, r37);
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	return SD_DRIVER_OK;
-
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
 }
 
 template <board::Sd num>
 int32_t Sd<num>::ReadSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]) {
 	assert(sd_!=NULL);
 	
-	uint8_t token = SD_NONE_TOKEN, res, resp1;
+	uint8_t token = SD_NONE_TOKEN, resp1;
 	uint16_t readAttempts = 0;
 	uint8_t cmd;
 	uint8_t crc;
 	uint8_t temp;
 	
-	res = Select();
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = Select();
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 		
-	res = Command(CMD17, addr, CMD17_CRC);
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = Command(CMD17, addr, CMD17_CRC);
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	res = ReadResponse(SdResponse::R1, &resp1);
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = ReadResponse(SdResponse::R1, &resp1);
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 
 	if(resp1 == SD_READY) {
 		while(token == SD_NONE_TOKEN && ++readAttempts != SD_MAX_READ_ATTEMPTS) {
-			res = spi_.Transfer(&TEMP0, &token, sizeof(uint8_t));
-			if(res!=ARM_DRIVER_OK)
-				return res;
+			err_code_ = spi_.Transfer(&TEMP0, &token, sizeof(uint8_t));
+			if(err_code_!=ARM_DRIVER_OK)
+				return err_code_;
 		}
 		
 		switch(token) {
 			case SD_START_BLOCK_TOKEN: {
 				for(uint16_t i = 0; i < BLOCK_LENGTH; i++) {
-					res = spi_.Transfer(&TEMP0, &buf[i], sizeof(uint8_t));
-					if(res!=ARM_DRIVER_OK)
-						return res;
+					err_code_ = spi_.Transfer(&TEMP0, &buf[i], sizeof(uint8_t));
+					if(err_code_!=ARM_DRIVER_OK)
+						return err_code_;
 				}
 
-				res = spi_.Write(&TEMP0, sizeof(uint8_t));
-				if(res!=ARM_DRIVER_OK)
-					return res;
+				err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+				if(err_code_!=ARM_DRIVER_OK)
+					return err_code_;
 			
-				res = spi_.Write(&TEMP0, sizeof(uint8_t));
-				if(res!=ARM_DRIVER_OK)
-					return res;
+				err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+				if(err_code_!=ARM_DRIVER_OK)
+					return err_code_;
 				
-				res = Unselect();
-				if(res!=SD_DRIVER_OK)
-					return res;
+				err_code_ = Unselect();
+				if(err_code_!=ERROR_CODE_OK)
+					return err_code_;
 				
-				return SD_DRIVER_OK;
+				err_code_ = ERROR_CODE_OK;
+				return err_code_;
 			}
 			
 			case SD_ERROR_TOKEN: {
-				res = Unselect();
-				if(res!=SD_DRIVER_OK)
-					return res;			
-				return SD_ERROR_BUSY_SIGNAL_TIMEOUT;
+				err_code_ = Unselect();
+				if(err_code_!=ERROR_CODE_OK)
+					return err_code_;
+				err_code_ = ERROR_CODE_BUSY_SIGNAL_TIMEOUT;
+				return err_code_;
 			}		
 			
 			case SD_NONE_TOKEN: {
-				res = Unselect();
-				if(res!=SD_DRIVER_OK)
-					return res;				
-				return SD_ERROR_NO_RESP_AFTER_R1;
+				err_code_ = Unselect();
+				if(err_code_!=ERROR_CODE_OK)
+					return err_code_;		
+				err_code_ = ERROR_CODE_NO_RESP_AFTER_R1;
+				return err_code_;
 			}			
 			
 			default: {
-				res = Unselect();
-				if(res!=SD_DRIVER_OK)
-					return res;			
-				return SD_ERROR_DATA_ERROR;
+				err_code_ = Unselect();
+				if(err_code_!=ERROR_CODE_OK)
+					return err_code_;
+				err_code_ = ERROR_CODE_DATA_ERROR;
+				return err_code_;
 			}					
 		}
 	} else {
-		res = Unselect();
-		if(res!=SD_DRIVER_OK)
-			return res;
-		
-		return SD_ERROR_ERROR_READING_BLOCK;
+		err_code_ = Unselect();
+		if(err_code_!=ERROR_CODE_OK)
+			return err_code_;
+		err_code_ = ERROR_CODE_ERROR_READING_BLOCK;
+		return err_code_;
 	}
 }
 
@@ -301,42 +317,43 @@ int32_t Sd<num>::WriteSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]) {
 	assert(sd_!=NULL);
 	
 	uint16_t writeAttempts = 0;
-	uint8_t token = SD_NONE_TOKEN, res, resp1, temp = SD_START_BLOCK_TOKEN;
+	uint8_t token = SD_NONE_TOKEN, resp1, temp = SD_START_BLOCK_TOKEN;
 
-	res = Select();
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = Select();
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	res = Command(CMD24, addr, CMD24_CRC);
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = Command(CMD24, addr, CMD24_CRC);
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	res = ReadResponse(SdResponse::R1, &resp1);
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = ReadResponse(SdResponse::R1, &resp1);
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
 	if(resp1 == SD_READY) {
-		res = spi_.Write(&temp, sizeof(uint8_t));
-		if(res!=ARM_DRIVER_OK)
-			return res;
+		err_code_ = spi_.Write(&temp, sizeof(uint8_t));
+		if(err_code_!=ARM_DRIVER_OK)
+			return err_code_;
 		
 		for(uint16_t i = 0; i < BLOCK_LENGTH; i++) {
-			res = spi_.Write(&buf[i], sizeof(uint8_t));
-			if(res!=ARM_DRIVER_OK)
-				return res;
+			err_code_ = spi_.Write(&buf[i], sizeof(uint8_t));
+			if(err_code_!=ARM_DRIVER_OK)
+				return err_code_;
 		}
 		
 		while(token == SD_NONE_TOKEN && ++writeAttempts != SD_MAX_WRITE_ATTEMPTS) {
-			res = spi_.Transfer(&TEMP0, &token, sizeof(uint8_t));
-			if(res!=ARM_DRIVER_OK)
-				return res;
+			err_code_ = spi_.Transfer(&TEMP0, &token, sizeof(uint8_t));
+			if(err_code_!=ARM_DRIVER_OK)
+				return err_code_;
 		}
 		
 		if(token == SD_NONE_TOKEN) {
-			res = Unselect();
-			if(res!=SD_DRIVER_OK)
-				return res;	
-			return SD_ERROR_NO_RESP_AFTER_R1;
+			err_code_ = Unselect();
+			if(err_code_!=ERROR_CODE_OK)
+				return err_code_;	
+			err_code_ = ERROR_CODE_NO_RESP_AFTER_R1;
+			return err_code_;
 		}			
 			
 		if((token & 0x1F) == SD_DATA_ACCEPTED) {
@@ -344,87 +361,88 @@ int32_t Sd<num>::WriteSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]) {
 			temp = SD_ERROR_TOKEN;
 			
 			while(temp == SD_ERROR_TOKEN && ++writeAttempts < SD_MAX_WRITE_ATTEMPTS) {
-				res = spi_.Transfer(&TEMP0, &temp, sizeof(uint8_t));
-				if(res!=ARM_DRIVER_OK)
-					return res;
+				err_code_ = spi_.Transfer(&TEMP0, &temp, sizeof(uint8_t));
+				if(err_code_!=ARM_DRIVER_OK)
+					return err_code_;
 			}
 			
 			if (writeAttempts == SD_MAX_WRITE_ATTEMPTS) {
-				res = Unselect();
-				if(res!=SD_DRIVER_OK)
-					return res;						
-				return SD_ERROR_BUSY_SIGNAL_TIMEOUT;			
+				err_code_ = Unselect();
+				if(err_code_!=ERROR_CODE_OK)
+					return err_code_;			
+				err_code_ = ERROR_CODE_BUSY_SIGNAL_TIMEOUT;
+				return err_code_;			
 			} else {
-				res = Unselect();
-				if(res!=0)
-					return res;		
-				return SD_DRIVER_OK;
+				err_code_ = Unselect();
+				if(err_code_!=0)
+					return err_code_;		
+				err_code_ = ERROR_CODE_OK;
+				return err_code_;
 			}
 		} else {
-			res = Unselect();
-			if(res!=SD_DRIVER_OK)
-				return res;		
-			return SD_ERROR_ERROR_IN_TOKEN;
+			err_code_ = Unselect();
+			if(err_code_!=ERROR_CODE_OK)
+				return err_code_;		
+			err_code_ = ERROR_CODE_ERROR_IN_TOKEN;
+			return err_code_;
 		}
 	} else {
-		res = Unselect();
-		if(res!=SD_DRIVER_OK)
-			return res;
-		return SD_ERROR_ERROR_WRITING_BLOCK;
+		err_code_ = Unselect();
+		if(err_code_!=ERROR_CODE_OK)
+			return err_code_;
+		err_code_ = ERROR_CODE_ERROR_WRITING_BLOCK;
+		return err_code_;
 	}
 }
 
 template <board::Sd num>
-int32_t Sd<num>::Select() {	
-	int32_t res;
+int32_t Sd<num>::Select() {		
+	err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
-	res = spi_.Write(&TEMP0, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.SlaveSelectEnableGpio(sd_->sd_ss_port, sd_->sd_ss_pin);
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
-	res = spi_.SlaveSelectEnableGpio(sd_->sd_ss_port, sd_->sd_ss_pin);
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
-	res = spi_.Write(&TEMP0, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
-	
-	return SD_DRIVER_OK;
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
 }
 
 template <board::Sd num>
-int32_t Sd<num>::Unselect() {	
-	int32_t res;
+int32_t Sd<num>::Unselect() {		
+	err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
-	res = spi_.Write(&TEMP0, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.SlaveSelectDisableGpio(sd_->sd_ss_port, sd_->sd_ss_pin);
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
-	res = spi_.SlaveSelectDisableGpio(sd_->sd_ss_port, sd_->sd_ss_pin);
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
-	res = spi_.Write(&TEMP0, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
-	
-	return SD_DRIVER_OK;
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
 }
 
 template <board::Sd num>
 int32_t Sd<num>::ReadResponse(SdResponse format, uint8_t *resp) {	
-	int32_t res;
 	uint8_t attempts = 0;
 	
-	res = spi_.Transfer(&TEMP0, &resp[0], sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Transfer(&TEMP0, &resp[0], sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
 	while(resp[0] == TEMP0 && ++attempts < 8) {
-		res = spi_.Transfer(&TEMP0, &resp[0], sizeof(uint8_t));
-		if(res!=ARM_DRIVER_OK)
-			return res;
+		err_code_ = spi_.Transfer(&TEMP0, &resp[0], sizeof(uint8_t));
+		if(err_code_!=ARM_DRIVER_OK)
+			return err_code_;
 	}
 
 	switch (format) {
@@ -435,87 +453,93 @@ int32_t Sd<num>::ReadResponse(SdResponse format, uint8_t *resp) {
 		} break;
 		
 		case SdResponse::R2: {	
-			res = spi_.Transfer(&TEMP0, &resp[1], sizeof(uint8_t));
-			if(res!=ARM_DRIVER_OK)
-				return res;
+			err_code_ = spi_.Transfer(&TEMP0, &resp[1], sizeof(uint8_t));
+			if(err_code_!=ARM_DRIVER_OK)
+				return err_code_;
 		} break;
 		
 		case SdResponse::R3: {
-			res = spi_.Transfer(&TEMP0, &resp[1], 4*sizeof(uint8_t));
-			if(res!=ARM_DRIVER_OK)
-				return res;
+			err_code_ = spi_.Transfer(&TEMP0, &resp[1], 4*sizeof(uint8_t));
+			if(err_code_!=ARM_DRIVER_OK)
+				return err_code_;
 		} break;
 		
 		case SdResponse::R7: {		
-			res = spi_.Transfer(&TEMP0, &resp[1], 4*sizeof(uint8_t));
-			if(res!=ARM_DRIVER_OK)
-				return res;
+			err_code_ = spi_.Transfer(&TEMP0, &resp[1], 4*sizeof(uint8_t));
+			if(err_code_!=ARM_DRIVER_OK)
+				return err_code_;
 		} break;
 	}
 	
-	return SD_DRIVER_OK;
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
 }
 
 template <board::Sd num>
 int32_t Sd<num>::Command(uint8_t cmd, uint32_t arg, uint8_t crc) {	
 	uint8_t temp;
-	uint8_t res;
 	
 	temp = cmd|0x40;
-	res = spi_.Write(&temp, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Write(&temp, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 		
 	temp = (uint8_t)(arg >> 24);
-	res = spi_.Write(&temp, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Write(&temp, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
 	temp = (uint8_t)(arg >> 16);
-	res = spi_.Write(&temp, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Write(&temp, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
 	temp = (uint8_t)(arg >> 8);
-	res = spi_.Write(&temp, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Write(&temp, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
 	temp = (uint8_t)(arg);
-	res = spi_.Write(&temp, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Write(&temp, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
 	temp = crc|0x01;
-	res = spi_.Write(&temp, sizeof(uint8_t));
-	if(res!=ARM_DRIVER_OK)
-		return res;
+	err_code_ = spi_.Write(&temp, sizeof(uint8_t));
+	if(err_code_!=ARM_DRIVER_OK)
+		return err_code_;
 	
-	return SD_DRIVER_OK;
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
 }
 
 template <board::Sd num>
 int32_t Sd<num>::CommandWrapped(uint32_t cmd, uint32_t arg, uint32_t crc, SdResponse resformat, uint8_t *resp) {	
-	int32_t res;
 	uint8_t r1;
 	
-	res = Select();
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = Select();
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	res = Command(cmd, arg, crc);
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = Command(cmd, arg, crc);
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	res = ReadResponse(resformat, resp);
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = ReadResponse(resformat, resp);
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	res = Unselect();
-	if(res!=SD_DRIVER_OK)
-		return res;
+	err_code_ = Unselect();
+	if(err_code_!=ERROR_CODE_OK)
+		return err_code_;
 	
-	return SD_DRIVER_OK;
+	err_code_ = ERROR_CODE_OK;
+	return err_code_;
+}
+
+template <board::Sd num>
+int32_t Sd<num>::GetLastErrorCode() {
+	return err_code_;
 }
 
 }

@@ -22,7 +22,7 @@ class ITask {
 	friend class RtosWrapper;
 	
 public:
-	virtual void Execute() = 0 ;
+	virtual void Execute() = 0;
 
 	inline static void Sleep(const std::chrono::milliseconds timeOut = 1000ms) {      
 		RtosWrapper::wSleep(std::chrono::duration_cast<TicksPerSecond>(timeOut).count());   

@@ -394,14 +394,29 @@
               <FilePath>.\board.cpp</FilePath>
             </File>
             <File>
-              <FileName>singelton.h</FileName>
+              <FileName>board.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\singelton.h</FilePath>
+              <FilePath>.\board.h</FilePath>
+            </File>
+            <File>
+              <FileName>board_api.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\board_api.h</FilePath>
+            </File>
+            <File>
+              <FileName>board_settings.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\board_settings.h</FilePath>
             </File>
             <File>
               <FileName>config.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\config.h</FilePath>
+            </File>
+            <File>
+              <FileName>singelton.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\singelton.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -464,11 +479,6 @@
           <GroupName>Tasks</GroupName>
           <Files>
             <File>
-              <FileName>data_acquisition_task.cpp</FileName>
-              <FileType>8</FileType>
-              <FilePath>.\tasks\data_acquisition_task.cpp</FilePath>
-            </File>
-            <File>
               <FileName>data_acquisition_task.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\tasks\data_acquisition_task.h</FilePath>
@@ -502,6 +512,21 @@
               <FileName>pca9554_driver.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\drivers\pca9554_driver.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Application</GroupName>
+          <Files>
+            <File>
+              <FileName>data_storage.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\application\data_storage.h</FilePath>
+            </File>
+            <File>
+              <FileName>data_storage_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\application\data_storage_config.h</FilePath>
             </File>
           </Files>
         </Group>

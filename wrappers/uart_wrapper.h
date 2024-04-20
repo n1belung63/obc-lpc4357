@@ -15,10 +15,6 @@ extern volatile void _delay_ms(uint32_t delay);
 
 namespace comm {
 
-#define UART_BAUDRATE	115200
-#define UART_ATTEMPTS_COUNT 10000
-
-
 class UartBuffer {
 	static constexpr int buf_size = 140;
 public:
@@ -61,6 +57,9 @@ public:
 
 	UartBuffer buf;
 private:
+	static constexpr uint32_t BAUDRATE = 115200;
+	static constexpr uint32_t ATTEMPTS_COUNT = 10000;
+
 	const Uart & operator=(const Uart &) = delete;
 	Uart();
 	int32_t Init();
@@ -122,7 +121,7 @@ int32_t Uart<num>::Init() {
 													ARM_USART_PARITY_NONE |
 													ARM_USART_STOP_BITS_1 |
 													ARM_USART_FLOW_CONTROL_NONE,
-													UART_BAUDRATE);
+													BAUDRATE);
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
@@ -154,7 +153,7 @@ int32_t Uart<num>::Write(const void *data_out, uint16_t length) {
 	for (uint16_t i = 0; i < length; i++) {
 		attempts = 0;
 		while (!(USART_periph->LSR & USART_LSR_TEMT)) {
-			if (++attempts > UART_ATTEMPTS_COUNT)
+			if (++attempts > ATTEMPTS_COUNT)
 				return ARM_DRIVER_ERROR_TIMEOUT;
 		}
 		USART_periph->THR = data[i];
@@ -181,7 +180,7 @@ int32_t Uart<num>::Read(void *data_in, uint16_t length) {
 		attempts = 0;
 		while (!(USART_periph->LSR & USART_LSR_RDR))
 		{ 
-			if (++attempts > UART_ATTEMPTS_COUNT)
+			if (++attempts > ATTEMPTS_COUNT)
 				return ARM_DRIVER_ERROR_TIMEOUT;
 		}
 		data[i] = USART_periph->RBR;
