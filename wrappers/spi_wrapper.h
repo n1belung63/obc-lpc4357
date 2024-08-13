@@ -15,6 +15,7 @@ extern "C" {
 #include <cassert>
 
 extern volatile void _delay_ms(uint32_t delay);
+extern volatile void _delay_us(uint32_t delay);
 
 namespace comm {
 	
@@ -125,14 +126,15 @@ int32_t Spi<num>::Transfer(const void *data_out, void *data_in, uint16_t length)
 	assert(drv_!=NULL);
 	
 	int32_t res;
-	uint8_t attempts=0;
+	uint32_t attempts=0;
 		
 	res = drv_->Transfer(data_out, data_in, length);
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
-		_delay_ms(1);
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < 1000000)
+		__NOP();
+//		_delay_ms(1);
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
 		return ERROR_CODE_TRANSFER_INCOMPLETE;
@@ -150,15 +152,15 @@ int32_t Spi<num>::Write(const void *data_out, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	int32_t res;
-	uint8_t attempts=0;
+	uint32_t attempts=0;
 	uint32_t cyc = 0;
 	
 	res = drv_->Send(data_out, length);
 	if (res != ARM_DRIVER_OK)
 		return res;
 
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
-		_delay_ms(1);
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < 1000000)
+		__NOP();
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
 		return ERROR_CODE_TRANSFER_INCOMPLETE;
@@ -176,14 +178,15 @@ int32_t Spi<num>::Read(void *data_in, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	int32_t res;
-	uint8_t attempts = 0;
+	uint32_t attempts = 0;
 	
 	res = drv_->Receive(data_in, length);
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
-		_delay_ms(1);
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < 1000000)
+		__NOP();
+//		_delay_ms(1);
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
 		return ERROR_CODE_TRANSFER_INCOMPLETE;

@@ -62,7 +62,7 @@ class CDataJSONEncoder(JSONEncoder):
 
 
 class SerialPort(serial.Serial):    
-    def __init__(self, ser_name : str, timeout : int = 4):
+    def __init__(self, ser_name : str, timeout : int = 10):
         super(serial.Serial, self).__init__(ser_name, baudrate = 115200, timeout = timeout, inter_byte_timeout=0.001)
 
     def write(self, data):

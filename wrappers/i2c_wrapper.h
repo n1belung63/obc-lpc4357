@@ -74,7 +74,7 @@ int32_t I2c<num>::Init() {
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	res = drv_->Control(ARM_I2C_BUS_SPEED, ARM_I2C_BUS_SPEED_STANDARD);
+	res = drv_->Control(ARM_I2C_BUS_SPEED, ARM_I2C_BUS_SPEED_FAST);
 	if (res != ARM_DRIVER_OK)
 		return res;
 		
@@ -129,10 +129,6 @@ int32_t I2c<num>::Read(const uint8_t addr, uint8_t* data, uint16_t length) {
 	int32_t attempts = 0;
 	
 	i2c_event_ = 0U;
-	
-	res = drv_->Control(ARM_I2C_BUS_CLEAR, 0);
-	if (res != ARM_DRIVER_OK)
-		return res;
 	
 	res = drv_->MasterReceive(addr, (uint8_t *)data, (uint32_t)length, false);
 	if (res != ARM_DRIVER_OK)

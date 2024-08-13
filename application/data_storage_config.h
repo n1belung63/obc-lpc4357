@@ -14,7 +14,7 @@ typedef struct __attribute__ ((__packed__)) {
 	board::MagnData sensors[board::MAGN_COUNT];
 } TObcMagnTme;
 
-typedef struct {
+typedef struct __attribute__ ((__packed__)) {
 	uint32_t tme_range_start;
 	uint32_t tme_range_length;
 	uint16_t tme_size;

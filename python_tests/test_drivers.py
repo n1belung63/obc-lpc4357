@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 def log(cmd_name : str):
         def inner(func):
-            # logger.info(f"[TST] - {test_name}")
             logger.info(f"[CMD] - {cmd_name}")
 
             def try_func(*args, **kwargs):
@@ -36,7 +35,6 @@ def log(cmd_name : str):
                         return (True, None)
 
                 except Exception as err:
-                    # logger.warning(f"[TST] - {test_name}")
                     logger.warning(f"[ERR] - {err}")
                     return (False, None)        
 
@@ -63,7 +61,7 @@ class Test_SdCard():
         PAGE_SIZE = 512
         PAGE_QUATER_SIZE = 128
 
-        def write_page(self, req : Request, sd_num : int, addr : int, inp_buf : List[int]):
+        def write_page(self, req : Request, sd_num : int, addr : int, inp_buf : List[int], resp_flag : bool) -> bool:
             request_body_write = Config.WriteSdRequest()
             request_body_write.sd_num = sd_num
             request_body_write.addr = addr
@@ -73,11 +71,14 @@ class Test_SdCard():
                     request_body_write.data[i] = inp_buf[self.PAGE_QUATER_SIZE * q + i]
                 cmd = Config.Commands.WRITE_SD
                 (flag, res) = log(cmd.name)(req.post)(cmd, request_body_write)
-                assert(flag)
-                time.sleep(0.5)
+                assert(flag == resp_flag)
+                if not flag:
+                    assert(res == None)
+                    return flag
+                time.sleep(1)
             return flag
 
-        def read_page(self, req : Request, sd_num : int, addr : int) -> List[int]:
+        def read_page(self, req : Request, sd_num : int, addr : int, resp_flag : bool) -> tuple[bool, List[int]]:
             request_body_read = Config.ReadSdRequest()
             request_body_read.sd_num = sd_num
             request_body_read.addr = addr
@@ -86,80 +87,112 @@ class Test_SdCard():
                 request_body_read.quarter = q
                 cmd = Config.Commands.READ_SD
                 (flag, data) = log(cmd.name)(req.get)(cmd, request_body_read)
-                assert(flag)
-                for i in range(sizeof(data)):
-                    out_buf[self.PAGE_QUATER_SIZE * q + i] = data.data[i]
-                time.sleep(0.5)
-            return out_buf
+                assert(flag == resp_flag)
+                if not flag:
+                    assert(data == None)
+                    return (flag, None)
+                else:
+                    for i in range(sizeof(data)):
+                        out_buf[self.PAGE_QUATER_SIZE * q + i] = data.data[i]
+                    time.sleep(1)
+            return (flag, out_buf)
 
     def setup_class(self):
         self.sup : Test_SdCard.Support_SdCard = self.Support_SdCard()
 
-    def test_get_status(self, req_inst : Request):
+    SD0, SD1 = 0, 1
+
+    test_data = [(SD0, False),(SD1, True)]
+
+    @pytest.mark.parametrize("sd_num,resp_flag", test_data)
+    def test_get_status(self, req_inst : Request, sd_num : int, resp_flag : bool):
         pass
 
-    def test_read_sd(self, req_inst : Request): 
+    @pytest.mark.parametrize("sd_num,resp_flag", test_data)
+    def test_read_sd(self, req_inst : Request, sd_num : int, resp_flag : bool): 
         test_name = get_test_name(self)
         logger.info(f"[TST] - {test_name}")
     
-        SD_NUM = 1
         ADDR = 0
-        out_buf = self.sup.read_page(req_inst, SD_NUM, ADDR)
+        (flag, out_buf) = self.sup.read_page(req_inst, sd_num, ADDR, resp_flag)
+
+        assert(flag == resp_flag)
+        if not flag:
+            assert(out_buf == None)
 
         logger.info(f"[RES] - PASSED\n")
 
         pass
 
-    def test_write_sd(self, req_inst : Request):
+    @pytest.mark.parametrize("sd_num,resp_flag", test_data)
+    def test_write_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):
         test_name = get_test_name(self)
         logger.info(f"[TST] - {test_name}")
 
-        SD_NUM = 1
         ADDR = 0
 
         inp_buf = list(range(self.sup.PAGE_SIZE // 2)) + list(range(self.sup.PAGE_SIZE // 2))
-        self.sup.write_page(req_inst, SD_NUM, ADDR, inp_buf)
+        flag = self.sup.write_page(req_inst, sd_num, ADDR, inp_buf, resp_flag)
+        
+        assert(flag == resp_flag)
 
         logger.info(f"[RES] - PASSED\n")
 
         pass
 
-    def test_write_and_read_sd(self, req_inst : Request):
+    @pytest.mark.parametrize("sd_num,resp_flag", test_data)
+    def test_write_and_read_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):
         test_name = get_test_name(self)
         logger.info(f"[TST] - {test_name}")
           
-        SD_NUM = 1
         ADDR = 0
 
         inp_buf = [0]*self.sup.PAGE_SIZE
-        self.sup.write_page(req_inst, SD_NUM, ADDR, inp_buf) 
-        out_buf = self.sup.read_page(req_inst, SD_NUM, ADDR)    
+        flag = self.sup.write_page(req_inst, sd_num, ADDR, inp_buf, resp_flag)
+        assert(flag == resp_flag)
+        (flag, out_buf) = self.sup.read_page(req_inst, sd_num, ADDR, resp_flag)    
+        assert(flag == resp_flag)
+        if not flag:
+            assert(out_buf == None)
 
         inp_buf = list(range(self.sup.PAGE_SIZE // 2)) + list(range(self.sup.PAGE_SIZE // 2))
-        self.sup.write_page(req_inst, SD_NUM, ADDR, inp_buf) 
-        out_buf = self.sup.read_page(req_inst, SD_NUM, ADDR)
 
-        assert(inp_buf == out_buf)
+        flag = self.sup.write_page(req_inst, sd_num, ADDR, inp_buf, resp_flag) 
+        assert(flag == resp_flag)
+        (flag, out_buf) = self.sup.read_page(req_inst, sd_num, ADDR, resp_flag)
+        assert(flag == resp_flag)
+        if not flag:
+            assert(out_buf == None)
+        else:
+            assert(inp_buf == out_buf)
 
         logger.info(f"[RES] - PASSED\n")
 
         pass
 
-    def test_erase_sd(self, req_inst : Request):    
-        SD_NUM = 1
+    @pytest.mark.parametrize("sd_num,resp_flag", test_data)
+    def test_stop_writing_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):
+        pass
+
+    @pytest.mark.parametrize("sd_num,resp_flag", test_data)
+    def test_start_writing_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):
+        pass
+
+    @pytest.mark.parametrize("sd_num,resp_flag", test_data)
+    def test_erase_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):    
         PAGE_COUNT = 3
     
         request_body_erase = Config.EraseSdRequest()
-        request_body_erase.sd_num = SD_NUM
+        request_body_erase.sd_num = sd_num
 
         inp_buf = list(range(self.sup.PAGE_SIZE // 2)) + list(range(self.sup.PAGE_SIZE // 2))
         print(inp_buf)
         
 
         for addr in range(PAGE_COUNT):
-            self.sup.write_page(req_inst, SD_NUM, addr, inp_buf)   
+            self.sup.write_page(req_inst, sd_num, addr, inp_buf, resp_flag)   
             print("smth")
-            out_buf = self.sup.read_page(req_inst, SD_NUM, addr)    
+            out_buf = self.sup.read_page(req_inst, sd_num, addr, resp_flag)    
             print(out_buf)
 
         request_body_erase.addr_start = 0
@@ -167,31 +200,28 @@ class Test_SdCard():
         req_inst.post(Config.Commands.ERASE_SD, request_body_erase)
         
         for addr in range(PAGE_COUNT):
-            out_buf = self.sup.read_page(req_inst, SD_NUM, addr)    
+            out_buf = self.sup.read_page(req_inst, sd_num, addr, resp_flag)    
             print(out_buf)
 
         pass
 
 
 class Test_Sensor():
-    def test_read_mpu(self, req_inst : Request):
+    MPU0, MPU1 = 0, 1
+
+    @pytest.mark.parametrize("mpu_num,resp_flag", [(MPU0, True),(MPU1, False)])
+    def test_read_mpu(self, req_inst : Request, mpu_num : int, resp_flag : bool):
         test_name = get_test_name(self)
         logger.info(f"[TST] - {test_name}")
         cmd = Config.Commands.READ_MPU
 
         request_body = Config.ReadMpuRequest()
-        request_body.mpu_num = 0
+        request_body.mpu_num = mpu_num
         (flag, res) = log(cmd.name)(req_inst.get)(cmd, request_body)
-        if not flag: 
-            logger.info(f"[RES] - FAILED\n")
-        assert(flag and res is not None)
 
-        request_body = Config.ReadMpuRequest()
-        request_body.mpu_num = 1
-        (flag, res) = log(cmd.name)(req_inst.get)(cmd, request_body)
-        assert(not flag and res is None)
-        if flag: 
-            logger.info(f"[RES] - FAILED\n")
+        assert(flag == resp_flag)
+        if not flag:
+            assert(res == None)
 
         logger.info(f"[RES] - PASSED\n")
 

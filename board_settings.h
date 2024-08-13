@@ -5,6 +5,8 @@ namespace board {
 	enum class I2c { kInt, kExt };	
 	enum class Spi { kSd };
 	
+	#define SAMSAT_SD_COUNT 2
+	
 	#define SAMSAT_SD1_NUM 0
 	#define SAMSAT_SD1_PORT 7
 	#define SAMSAT_SD1_PIN 7

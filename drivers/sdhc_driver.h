@@ -20,7 +20,7 @@ typedef struct {
 
 enum class SdResponse { R1, R1b, R2, R3, R7 };
 
-inline static SD_t sd_arr[2] = {
+inline static SD_t sd_arr[SAMSAT_SD_COUNT] = {
 	{ .sd_i = SAMSAT_SD1_NUM, .sd_ss_port = SAMSAT_SD1_PORT, .sd_ss_pin = SAMSAT_SD1_PIN },
 	{ .sd_i = SAMSAT_SD2_NUM, .sd_ss_port = SAMSAT_SD2_PORT, .sd_ss_pin = SAMSAT_SD2_PIN }
 };
@@ -30,6 +30,7 @@ class Sd : public Singleton<Sd<num>> {
 	friend class Singleton<Sd<num>>;
 public:
 	static constexpr uint32_t BLOCK_LENGTH = 512;
+	static constexpr uint32_t BLOCK_QUARTER_LENGTH = 128;
 
 	static constexpr int32_t ERROR_CODE_OK = 0;
 	static constexpr int32_t ERROR_CODE_NOT_IN_IDLE_STATE = (ARM_DRIVER_ERROR_SPECIFIC - 21);
@@ -115,6 +116,7 @@ private:
 	int32_t Init();
 
 	SD_t* Resolve();
+	
 	int32_t Select();
 	int32_t Unselect();
 	int32_t Command(uint8_t cmd, uint32_t arg, uint8_t crc);
@@ -317,80 +319,80 @@ int32_t Sd<num>::WriteSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]) {
 	assert(sd_!=NULL);
 	
 	uint16_t writeAttempts = 0;
-	uint8_t token = SD_NONE_TOKEN, resp1, temp = SD_START_BLOCK_TOKEN;
+	uint8_t token = Sd::SD_NONE_TOKEN, resp1, temp = Sd::SD_START_BLOCK_TOKEN;
 
 	err_code_ = Select();
-	if(err_code_!=ERROR_CODE_OK)
+	if(err_code_!=Sd::ERROR_CODE_OK)
 		return err_code_;
 	
-	err_code_ = Command(CMD24, addr, CMD24_CRC);
-	if(err_code_!=ERROR_CODE_OK)
+	err_code_ = Command(Sd::CMD24, addr, Sd::CMD24_CRC);
+	if(err_code_!=Sd::ERROR_CODE_OK)
 		return err_code_;
 	
 	err_code_ = ReadResponse(SdResponse::R1, &resp1);
-	if(err_code_!=ERROR_CODE_OK)
+	if(err_code_!=Sd::ERROR_CODE_OK)
 		return err_code_;
 	
-	if(resp1 == SD_READY) {
+	if(resp1 == Sd::SD_READY) {
 		err_code_ = spi_.Write(&temp, sizeof(uint8_t));
 		if(err_code_!=ARM_DRIVER_OK)
 			return err_code_;
 		
-		for(uint16_t i = 0; i < BLOCK_LENGTH; i++) {
+		for(uint16_t i = 0; i < Sd::BLOCK_LENGTH; i++) {
 			err_code_ = spi_.Write(&buf[i], sizeof(uint8_t));
 			if(err_code_!=ARM_DRIVER_OK)
 				return err_code_;
 		}
 		
-		while(token == SD_NONE_TOKEN && ++writeAttempts != SD_MAX_WRITE_ATTEMPTS) {
-			err_code_ = spi_.Transfer(&TEMP0, &token, sizeof(uint8_t));
+		while(token == Sd::SD_NONE_TOKEN && ++writeAttempts != Sd::SD_MAX_WRITE_ATTEMPTS) {
+			err_code_ = spi_.Transfer(&Sd::TEMP0, &token, sizeof(uint8_t));
 			if(err_code_!=ARM_DRIVER_OK)
 				return err_code_;
 		}
 		
-		if(token == SD_NONE_TOKEN) {
+		if(token == Sd::SD_NONE_TOKEN) {
 			err_code_ = Unselect();
-			if(err_code_!=ERROR_CODE_OK)
+			if(err_code_!=Sd::ERROR_CODE_OK)
 				return err_code_;	
-			err_code_ = ERROR_CODE_NO_RESP_AFTER_R1;
+			err_code_ = Sd::ERROR_CODE_NO_RESP_AFTER_R1;
 			return err_code_;
 		}			
 			
-		if((token & 0x1F) == SD_DATA_ACCEPTED) {
+		if((token & 0x1F) == Sd::SD_DATA_ACCEPTED) {
 			writeAttempts = 0;			
-			temp = SD_ERROR_TOKEN;
+			temp = Sd::SD_ERROR_TOKEN;
 			
-			while(temp == SD_ERROR_TOKEN && ++writeAttempts < SD_MAX_WRITE_ATTEMPTS) {
-				err_code_ = spi_.Transfer(&TEMP0, &temp, sizeof(uint8_t));
+			while(temp == Sd::SD_ERROR_TOKEN && ++writeAttempts < Sd::SD_MAX_WRITE_ATTEMPTS) {
+				err_code_ = spi_.Transfer(&Sd::TEMP0, &temp, sizeof(uint8_t));
 				if(err_code_!=ARM_DRIVER_OK)
 					return err_code_;
 			}
 			
-			if (writeAttempts == SD_MAX_WRITE_ATTEMPTS) {
+			if (writeAttempts == Sd::SD_MAX_WRITE_ATTEMPTS) {
 				err_code_ = Unselect();
-				if(err_code_!=ERROR_CODE_OK)
+				if(err_code_!=Sd::ERROR_CODE_OK)
 					return err_code_;			
-				err_code_ = ERROR_CODE_BUSY_SIGNAL_TIMEOUT;
+				err_code_ = Sd::ERROR_CODE_BUSY_SIGNAL_TIMEOUT;
 				return err_code_;			
 			} else {
 				err_code_ = Unselect();
 				if(err_code_!=0)
 					return err_code_;		
-				err_code_ = ERROR_CODE_OK;
+				err_code_ = Sd::ERROR_CODE_OK;
 				return err_code_;
 			}
 		} else {
 			err_code_ = Unselect();
-			if(err_code_!=ERROR_CODE_OK)
+			if(err_code_!=Sd::ERROR_CODE_OK)
 				return err_code_;		
-			err_code_ = ERROR_CODE_ERROR_IN_TOKEN;
+			err_code_ = Sd::ERROR_CODE_ERROR_IN_TOKEN;
 			return err_code_;
 		}
 	} else {
 		err_code_ = Unselect();
-		if(err_code_!=ERROR_CODE_OK)
+		if(err_code_!=Sd::ERROR_CODE_OK)
 			return err_code_;
-		err_code_ = ERROR_CODE_ERROR_WRITING_BLOCK;
+		err_code_ = Sd::ERROR_CODE_ERROR_WRITING_BLOCK;
 		return err_code_;
 	}
 }

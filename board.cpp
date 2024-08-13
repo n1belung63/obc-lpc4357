@@ -60,6 +60,8 @@ Board::Board() {
 }
 
 int32_t Board::SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[512]) {
+	assert(num == Sd::kNum1 || num == Sd::kNum2);
+	
 	switch(num) {
 		case Sd::kNum1: {
 			if (status_pool_.sd[static_cast<uint8_t>(Sd::kNum1)] == Status::kFailed) {
@@ -80,7 +82,9 @@ int32_t Board::SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[512]) {
 }
 
 int32_t Board::SdPageRead(Sd num, uint32_t page_addr, uint8_t page[512]) {
-		switch(num) {
+	assert(num == Sd::kNum1 || num == Sd::kNum2);
+	
+	switch(num) {
 		case Sd::kNum1: {
 			if (status_pool_.sd[static_cast<uint8_t>(Sd::kNum1)] == Status::kFailed) {
 				return ERROR_CODE_NOT_INITED;
@@ -99,12 +103,32 @@ int32_t Board::SdPageRead(Sd num, uint32_t page_addr, uint8_t page[512]) {
 	}
 }
 
+int32_t Board::SdBlock(Sd num) {
+	assert(num == Sd::kNum1 || num == Sd::kNum2);
+	
+	if (GetSdStatus(num) == Status::kWorked) {
+		status_pool_.sd[static_cast<uint8_t>(num)] = Status::kBlocked;
+	}
+	return ERROR_CODE_OK;
+}
+
+int32_t Board::SdUnblock(Sd num) {
+	assert(num == Sd::kNum1 || num == Sd::kNum2);
+	
+	if (GetSdStatus(num) == Status::kBlocked) {
+		status_pool_.sd[static_cast<uint8_t>(num)] = Status::kWorked;
+	}
+	return ERROR_CODE_OK;
+}
+
 int32_t Board::SdSectorErase(Sd num, SdSector sector_num) {
 	return 0;
 }
 
 int32_t Board::MagnRead(Magn num, MagnData& data) {
-		switch(num) {
+	assert(num == Magn::kNum1 || num == Magn::kNum2);
+	
+	switch(num) {
 		case Magn::kNum1: {
 			if (status_pool_.mpu[static_cast<uint8_t>(Magn::kNum1)] == Status::kFailed) {
 				return ERROR_CODE_NOT_INITED;
@@ -159,6 +183,15 @@ int32_t Board::MagnRead(Magn num, MagnData& data) {
 			return res;
 		}
 	}
+}
+
+Status Board::GetMagnStatus(Magn num) {
+	assert(num == Magn::kNum1 || num == Magn::kNum2);
+	return status_pool_.mpu[static_cast<uint8_t>(num)];
+}
+Status Board::GetSdStatus(Sd num) {
+	assert(num == Sd::kNum1 || num == Sd::kNum2);
+	return status_pool_.sd[static_cast<uint8_t>(num)];
 }
 
 void Board::RiTimerConfig(uint32_t ticks) {

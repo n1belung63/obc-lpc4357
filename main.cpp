@@ -14,9 +14,10 @@ using namespace board;
 using namespace app;
 
 uint8_t buf_512[512] = {0};	//todo: to refactor static allocator???
+//volatile uint8_t sd_writing_is_enabled = 1U; //todo: to refactor with freertos
 
 volatile void _delay_ms(uint32_t delay) {
-	volatile uint32_t cyc = delay * (SystemCoreClock / 1000) / 6;	// maximum delay is 14.3165 s
+	volatile uint32_t cyc = delay * ((SystemCoreClock / 1000) / 6);	// maximum delay is 14.3165 s
 
 	__asm volatile (
 		" while:             \n"
@@ -31,13 +32,12 @@ volatile void _delay_ms(uint32_t delay) {
 
 int main(void) {
 	Board& obc = Board::GetInstance();
-	
-	DataStorage<board::Board> data_storage;
+	DataStorage<board::Board>& data_storage = DataStorage<board::Board>::GetInstance();
 		
-	DataAcquisitionTask<board::Board> data_acquisition_task(data_storage);
-	UartTask uart_task;
+	DataAcquisitionTask<board::Board> data_acquisition_task;
+	UartTask<board::Board> uart_task;
 	
-	Rtos::CreateTask(data_acquisition_task, "DataAcquisitionTask", TaskPriority::aboveNormal);
+	Rtos::CreateTask(data_acquisition_task, "DataAcqTask", TaskPriority::aboveNormal);
 	Rtos::CreateTask(uart_task, "UartTask", TaskPriority::highest);
 	Rtos::Start();
 	

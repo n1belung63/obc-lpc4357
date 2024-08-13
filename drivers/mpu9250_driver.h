@@ -220,19 +220,23 @@ int32_t Mpu9250<addr>::Write(uint8_t reg, uint8_t buffer[], uint8_t count) {
 
 	CombineRegAndData(REG_I2C_SLV0_ADDR, MAG_I2C_ADDR, data_write);
 	err_code_ = i2c_.Write(addr_, data_write, 2);
-	if (err_code_ != ARM_DRIVER_OK) return err_code_;
+	if (err_code_ != ARM_DRIVER_OK)
+		return err_code_;
 			
 	CombineRegAndData(REG_I2C_SLV0_REG, reg, data_write);
 	err_code_ = i2c_.Write(addr_, data_write, 2);
-	if (err_code_ != ARM_DRIVER_OK) return err_code_;
+	if (err_code_ != ARM_DRIVER_OK)
+		return err_code_;
 	
 	CombineRegAndData(REG_I2C_SLV0_DO, *buffer, data_write);
 	err_code_ = i2c_.Write(addr_, data_write, 2);
-	if (err_code_ != ARM_DRIVER_OK) return err_code_;
+	if (err_code_ != ARM_DRIVER_OK)
+		return err_code_;
 	
 	CombineRegAndData(REG_I2C_SLV0_CTRL, MASK_I2C_SLV0_I2C_SLV0_EN | count, data_write);
 	err_code_ = i2c_.Write(addr_, data_write, 2);
-	if (err_code_ != ARM_DRIVER_OK) return err_code_;
+	if (err_code_ != ARM_DRIVER_OK)
+		return err_code_;
 	
 	err_code_ = ERROR_CODE_OK;
 	return err_code_;
