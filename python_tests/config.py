@@ -7,8 +7,10 @@ class Config():
         READ_SD = 2
         WRITE_SD = 3
         ERASE_SD = 4
-
-        READ_MPU = 5
+        BLOCK_SD = 5
+        UNBLOCK_SD = 6
+        
+        READ_MPU = 7
 
     class GetSdStatusRequest(Structure):
         _pack_ = 1
@@ -48,6 +50,18 @@ class Config():
             ("sd_num", c_ubyte),
             ("addr_start", c_uint),
             ("addr_end", c_uint),
+        ]
+
+    class BlockSdRequest(Structure):
+        _pack_ = 1
+        _fields_ = [
+            ("sd_num", c_ubyte)
+        ]
+
+    class UnblockSdRequest(Structure):
+        _pack_ = 1
+        _fields_ = [
+            ("sd_num", c_ubyte)
         ]
 
     class ReadMpuRequest(Structure):

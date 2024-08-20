@@ -75,7 +75,7 @@ class Test_SdCard():
                 if not flag:
                     assert(res == None)
                     return flag
-                time.sleep(1)
+                time.sleep(2)
             return flag
 
         def read_page(self, req : Request, sd_num : int, addr : int, resp_flag : bool) -> tuple[bool, List[int]]:
@@ -94,7 +94,7 @@ class Test_SdCard():
                 else:
                     for i in range(sizeof(data)):
                         out_buf[self.PAGE_QUATER_SIZE * q + i] = data.data[i]
-                    time.sleep(1)
+                    time.sleep(2)
             return (flag, out_buf)
 
     def setup_class(self):
@@ -172,36 +172,112 @@ class Test_SdCard():
 
     @pytest.mark.parametrize("sd_num,resp_flag", test_data)
     def test_stop_writing_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):
+        test_name = get_test_name(self)
+        logger.info(f"[TST] - {test_name}")
+
+        cmd = Config.Commands.BLOCK_SD
+
+        request_body = Config.BlockSdRequest()
+        request_body.sd_num = sd_num
+        (flag, res) = log(cmd.name)(req_inst.post)(cmd, request_body)
+
+        assert(flag == resp_flag)
+        if not flag:
+            assert(res == None)
+
+        logger.info(f"[RES] - PASSED\n")
+
         pass
 
     @pytest.mark.parametrize("sd_num,resp_flag", test_data)
     def test_start_writing_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):
+        test_name = get_test_name(self)
+        logger.info(f"[TST] - {test_name}")
+
+        cmd = Config.Commands.UNBLOCK_SD
+
+        request_body = Config.UnblockSdRequest()
+        request_body.sd_num = sd_num
+        (flag, res) = log(cmd.name)(req_inst.post)(cmd, request_body)
+
+        assert(flag == resp_flag)
+        if not flag:
+            assert(res == None)
+
+        logger.info(f"[RES] - PASSED\n")
         pass
 
     @pytest.mark.parametrize("sd_num,resp_flag", test_data)
-    def test_erase_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):    
-        PAGE_COUNT = 3
+    def test_erase_sd(self, req_inst : Request, sd_num : int, resp_flag : bool):
+        test_name = get_test_name(self)
+        logger.info(f"[TST] - {test_name}")
+        cmd = Config.Commands.ERASE_SD
+
+        PAGE_COUNT = 1
     
-        request_body_erase = Config.EraseSdRequest()
-        request_body_erase.sd_num = sd_num
-
-        inp_buf = list(range(self.sup.PAGE_SIZE // 2)) + list(range(self.sup.PAGE_SIZE // 2))
-        print(inp_buf)
-        
+        inp_buf = list(range(self.sup.PAGE_SIZE // 2)) + list(range(self.sup.PAGE_SIZE // 2))        
 
         for addr in range(PAGE_COUNT):
-            self.sup.write_page(req_inst, sd_num, addr, inp_buf, resp_flag)   
-            print("smth")
-            out_buf = self.sup.read_page(req_inst, sd_num, addr, resp_flag)    
-            print(out_buf)
+            flag = self.sup.write_page(req_inst, sd_num, addr, inp_buf, resp_flag)  
+            assert(flag == resp_flag) 
+            (flag, out_buf) = self.sup.read_page(req_inst, sd_num, addr, resp_flag)
+            assert(flag == resp_flag)
+            if not flag:
+                assert(out_buf == None)
+            else:
+                assert(out_buf == inp_buf)
 
-        request_body_erase.addr_start = 0
-        request_body_erase.addr_end = PAGE_COUNT - 1
-        req_inst.post(Config.Commands.ERASE_SD, request_body_erase)
+
+        request_body = Config.EraseSdRequest()
+        request_body.sd_num = sd_num
+        request_body.addr_start = 0
+        request_body.addr_end = PAGE_COUNT - 1
+        (flag, res) = log(cmd.name)(req_inst.post)(cmd, request_body)
+
+        assert(flag == resp_flag)
+        if not flag:
+            assert(res == None)
         
         for addr in range(PAGE_COUNT):
-            out_buf = self.sup.read_page(req_inst, sd_num, addr, resp_flag)    
+            (flag, out_buf) = self.sup.read_page(req_inst, sd_num, addr, resp_flag)
+            assert(flag == resp_flag)
+            if not flag:
+                assert(out_buf == None)
+            else:
+                assert(out_buf == [0]*self.sup.PAGE_SIZE)
             print(out_buf)
+
+        pass
+
+    @pytest.mark.parametrize("sd_num,resp_flag", test_data)
+    def test_erase_sd_sector(self, req_inst : Request, sd_num : int, resp_flag : bool):
+        test_name = get_test_name(self)
+        logger.info(f"[TST] - {test_name}")
+        cmd = Config.Commands.ERASE_SD
+
+        PAGE_COUNT = 0x00200000
+
+        request_body = Config.EraseSdRequest()
+        request_body.sd_num = sd_num
+        request_body.addr_start = 0
+        request_body.addr_end = PAGE_COUNT - 1
+        (flag, res) = log(cmd.name)(req_inst.post)(cmd, request_body)
+
+        assert(flag == resp_flag)
+        if not flag:
+            assert(res == None)
+
+        time.sleep(5)
+        
+        for addr in [0, 1000000, 2000000]:
+            (flag, out_buf) = self.sup.read_page(req_inst, sd_num, addr, resp_flag)
+            assert(flag == resp_flag)
+            if not flag:
+                assert(out_buf == None)
+            else:
+                assert(out_buf == [0]*self.sup.PAGE_SIZE)
+            print(out_buf)
+            time.sleep(2)
 
         pass
 

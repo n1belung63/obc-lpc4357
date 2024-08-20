@@ -121,8 +121,26 @@ int32_t Board::SdUnblock(Sd num) {
 	return ERROR_CODE_OK;
 }
 
-int32_t Board::SdSectorErase(Sd num, SdSector sector_num) {
-	return 0;
+int32_t Board::SdRangeErase(Sd num, uint32_t start_addr, uint32_t end_addr) {
+	assert(num == Sd::kNum1 || num == Sd::kNum2);
+	
+	switch(num) {
+		case Sd::kNum1: {
+			if (status_pool_.sd[static_cast<uint8_t>(Sd::kNum1)] == Status::kFailed) {
+				return ERROR_CODE_NOT_INITED;
+			}					
+			Sd0& sd0 = Sd0::GetInstance();
+			return sd0.Erase(start_addr, end_addr);
+		}
+			
+		case Sd::kNum2: {
+			if (status_pool_.sd[static_cast<uint8_t>(Sd::kNum2)] == Status::kFailed) {
+				return ERROR_CODE_NOT_INITED;
+			}	
+			Sd1& sd1 = Sd1::GetInstance();
+			return sd1.Erase(start_addr, end_addr);
+		}
+	}
 }
 
 int32_t Board::MagnRead(Magn num, MagnData& data) {

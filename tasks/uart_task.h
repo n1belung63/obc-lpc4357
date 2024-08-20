@@ -1,12 +1,16 @@
 #pragma once
 
 #include "../rtos_wrapper/rtos.h"
-#include "../board_api.h"
-#include "../application/data_storage_config.h"
+
+#include "../system_abstraction/board_api.h"
+#include "../system_abstraction/data_storage_config.h"
+
 #include "../application/data_storage.h"
 
 #include "../wrappers/uart_wrapper.h"
 #include "../config.h"
+
+using namespace std::chrono_literals;
 
 extern uint8_t buf_512[512];
 
@@ -71,8 +75,7 @@ void UartTask<TBoard>::Execute() {
 				
 				case debug_config::Commands::WRITE_SD: {
 					using type = debug_config::WRITE_SD_REQUEST_t;
-					data_length = sizeof(type);
-					debug.Read(buf_, data_length);
+					debug.Read(buf_, sizeof(type));
 					sd_num = ((type*)buf_)->sd_num;
 
 					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
@@ -102,6 +105,68 @@ void UartTask<TBoard>::Execute() {
 				}
 
 				case debug_config::Commands::ERASE_SD: {
+					using type = debug_config::ERASE_SD_REQUEST_t;
+					debug.Read(buf_, sizeof(type));
+					sd_num = ((type*)buf_)->sd_num;
+					
+					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
+						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
+						break;
+					}
+					
+					res = obc.SdRangeErase(static_cast<board::Sd>(sd_num), ((type*)buf_)->addr_start, ((type*)buf_)->addr_end);
+					if (res != board::ERROR_CODE_OK) {
+						debug.WriteByte(static_cast<char>(debug_config::Response::NACK));
+						debug.Write(&res, sizeof(res));
+						break;
+					}
+					
+					debug.WriteByte(static_cast<char>(debug_config::Response::ACK));
+	
+					break;
+				}
+				
+				case debug_config::Commands::BLOCK_SD: {
+					using type = debug_config::BLOCK_SD_REQUEST_t;
+					debug.Read(buf_, sizeof(type));
+					sd_num = ((type*)buf_)->sd_num;
+					
+					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
+						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
+						break;
+					}
+					
+					res = obc.SdBlock(static_cast<board::Sd>(sd_num));
+					if (res != board::ERROR_CODE_OK) {
+						debug.WriteByte(static_cast<char>(debug_config::Response::NACK));
+						debug.Write(&res, sizeof(res));
+						break;
+					}
+					
+					debug.WriteByte(static_cast<char>(debug_config::Response::ACK));
+	
+					break;
+				}
+				
+				case debug_config::Commands::UNBLOCK_SD: {
+					using type = debug_config::UNBLOCK_SD_REQUEST_t;
+					debug.Read(buf_, sizeof(type));
+					sd_num = ((type*)buf_)->sd_num;
+					
+					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
+						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
+						break;
+					}
+					
+					res = obc.SdUnblock(static_cast<board::Sd>(sd_num));
+					if (res != board::ERROR_CODE_OK) {
+						debug.WriteByte(static_cast<char>(debug_config::Response::NACK));
+						debug.Write(&res, sizeof(res));
+						break;
+					}
+					
+					debug.WriteByte(static_cast<char>(debug_config::Response::ACK));
+	
 					break;
 				}
 

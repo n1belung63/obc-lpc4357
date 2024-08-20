@@ -24,14 +24,14 @@ static constexpr uint8_t MAGN_COUNT = 2;
 
 enum class Sd { kNum1, kNum2 };
 enum class Magn { kNum1, kNum2 };
-enum class SdSector { kMagn };
+//enum class SdSector { kMagn };
 enum class Status { kWorked, kFailed, kBlocked };
 	
 class IBoard {
 public:
 	virtual int32_t SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[512]) = 0;
   virtual int32_t SdPageRead(Sd num, uint32_t page_addr, uint8_t page[512]) = 0;
-  virtual int32_t SdSectorErase(Sd num, SdSector sector_num) = 0;
+  virtual int32_t SdRangeErase(Sd num, uint32_t start_addr, uint32_t end_addr) = 0;
 	virtual int32_t SdBlock(Sd num) = 0;
 	virtual int32_t SdUnblock(Sd num) = 0;
   virtual int32_t MagnRead(Magn num, MagnData& data) = 0;

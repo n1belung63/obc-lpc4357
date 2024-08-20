@@ -63,3 +63,5 @@ DebugConfig/*
 *.iex
 
 *Log.txt
+/cpp_tests/.vscode
+/build

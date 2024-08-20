@@ -381,7 +381,7 @@
       </TargetOption>
       <Groups>
         <Group>
-          <GroupName>source</GroupName>
+          <GroupName>System</GroupName>
           <Files>
             <File>
               <FileName>main.cpp</FileName>
@@ -397,11 +397,6 @@
               <FileName>board.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\board.h</FilePath>
-            </File>
-            <File>
-              <FileName>board_api.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\board_api.h</FilePath>
             </File>
             <File>
               <FileName>board_settings.h</FileName>
@@ -421,27 +416,7 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>wrappers</GroupName>
-          <Files>
-            <File>
-              <FileName>uart_wrapper.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\wrappers\uart_wrapper.h</FilePath>
-            </File>
-            <File>
-              <FileName>i2c_wrapper.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\wrappers\i2c_wrapper.h</FilePath>
-            </File>
-            <File>
-              <FileName>spi_wrapper.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\wrappers\spi_wrapper.h</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>rtos_wrapper</GroupName>
+          <GroupName>RtosWrapper</GroupName>
           <Files>
             <File>
               <FileName>rtosdefs.h</FileName>
@@ -476,21 +451,6 @@
           </Files>
         </Group>
         <Group>
-          <GroupName>Tasks</GroupName>
-          <Files>
-            <File>
-              <FileName>data_acquisition_task.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\tasks\data_acquisition_task.h</FilePath>
-            </File>
-            <File>
-              <FileName>uart_task.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\tasks\uart_task.h</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
           <GroupName>Drivers</GroupName>
           <Files>
             <File>
@@ -511,6 +471,41 @@
           </Files>
         </Group>
         <Group>
+          <GroupName>InterfaceDrivers</GroupName>
+          <Files>
+            <File>
+              <FileName>uart_wrapper.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\wrappers\uart_wrapper.h</FilePath>
+            </File>
+            <File>
+              <FileName>i2c_wrapper.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\wrappers\i2c_wrapper.h</FilePath>
+            </File>
+            <File>
+              <FileName>spi_wrapper.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\wrappers\spi_wrapper.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>System Abstraction</GroupName>
+          <Files>
+            <File>
+              <FileName>board_api.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\system_abstraction\board_api.h</FilePath>
+            </File>
+            <File>
+              <FileName>data_storage_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\system_abstraction\data_storage_config.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
           <GroupName>Application</GroupName>
           <Files>
             <File>
@@ -518,10 +513,20 @@
               <FileType>5</FileType>
               <FilePath>.\application\data_storage.h</FilePath>
             </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Tasks</GroupName>
+          <Files>
             <File>
-              <FileName>data_storage_config.h</FileName>
+              <FileName>data_acquisition_task.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\application\data_storage_config.h</FilePath>
+              <FilePath>.\tasks\data_acquisition_task.h</FilePath>
+            </File>
+            <File>
+              <FileName>uart_task.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\tasks\uart_task.h</FilePath>
             </File>
           </Files>
         </Group>

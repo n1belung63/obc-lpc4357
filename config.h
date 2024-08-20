@@ -16,7 +16,9 @@ enum class Commands {
   READ_SD = 2,
   WRITE_SD = 3,
   ERASE_SD = 4,
-	READ_MPU = 5
+	BLOCK_SD = 5,
+	UNBLOCK_SD = 6,
+	READ_MPU = 7,
 };
 
 typedef struct __attribute__ ((__packed__)) {
@@ -49,6 +51,14 @@ typedef struct __attribute__ ((__packed__)) {
 	uint32_t addr_start;
 	uint32_t addr_end;
 } ERASE_SD_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sd_num;
+} BLOCK_SD_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sd_num;
+} UNBLOCK_SD_REQUEST_t;
 
 typedef struct __attribute__ ((__packed__)) {
 	uint8_t mpu_num;

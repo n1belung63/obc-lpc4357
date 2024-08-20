@@ -1,11 +1,14 @@
 #pragma once
 
 #include "../rtos_wrapper/rtos.h"
-#include "../board_api.h"
-#include "../application/data_storage_config.h"
+
+#include "../system_abstraction/board_api.h"
+#include "../system_abstraction/data_storage_config.h"
+
 #include "../application/data_storage.h"
 
 using namespace std::chrono_literals;
+using namespace wrtos;
 
 template <typename TBoard>
 class DataAcquisitionTask : public wrtos::Task<static_cast<std::size_t>(wrtos::StackDepth::minimal)> {
@@ -28,6 +31,7 @@ void DataAcquisitionTask<TBoard>::Execute() {
 		for ( uint8_t num = 0; num < board::MAGN_COUNT; ++num ) {
 			if ( obc.GetMagnStatus(static_cast<board::Magn>(num)) == board::Status::kWorked ) {
 				if ( obc.MagnRead(static_cast<board::Magn>(num), tme.sensors[num]) == board::ERROR_CODE_OK ) {
+					tme.time = Rtos::GetSchedulerTime();
 					if ( obc.GetSdStatus(board::Sd::kNum1) == board::Status::kWorked ) {
 						data_storage.template AddTmeToSd<board::Sd::kNum1>(app::Sector::ObcSensors, reinterpret_cast<uint8_t*>(&tme));
 					}

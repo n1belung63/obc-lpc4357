@@ -3,7 +3,7 @@
 #include "../singelton.h"
 #include "../wrappers/spi_wrapper.h"
 #include "../board_settings.h"
-#include "../board_api.h"
+#include "../system_abstraction/board_api.h"
 
 #include <cstdint>
 #include <cstring>
@@ -46,6 +46,7 @@ public:
 
 	int32_t ReadSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]);
 	int32_t WriteSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]);
+	int32_t Erase(uint32_t start_addr, uint32_t end_addr);
 
 	int32_t GetLastErrorCode();
 
@@ -77,6 +78,16 @@ private:
 
 	static constexpr uint8_t CMD24 = 24;
 	static constexpr uint8_t CMD24_CRC = 0x00;
+	
+	static constexpr uint8_t CMD32 = 32;
+	static constexpr uint8_t CMD32_CRC = 0x00;
+
+	static constexpr uint8_t CMD33 = 33;
+	static constexpr uint8_t CMD33_CRC = 0x00;
+
+	static constexpr uint8_t CMD38 = 38;
+	static constexpr uint8_t CMD38_ARG = 0x00;
+	static constexpr uint8_t CMD38_CRC = 0x00;
 
 	static constexpr uint8_t CMD55 = 55;
 	static constexpr uint32_t CMD55_ARG = 0x00000000;
@@ -157,63 +168,63 @@ int32_t Sd<num>::Init() {
 	if(err_code_!=ARM_DRIVER_OK)
 		return err_code_;
 	
-	for(uint8_t i = 0; i < SD_INIT_CYCLES; i++) {
-		err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+	for(uint8_t i = 0; i < Sd::SD_INIT_CYCLES; i++) {
+		err_code_ = spi_.Write(&Sd::TEMP0, sizeof(uint8_t));
 		if(err_code_!=ARM_DRIVER_OK)
 			return err_code_;
 	}
 
 	/* Go Idle state (CMD0) */
-	err_code_ = CommandWrapped(CMD0, CMD0_ARG, CMD0_CRC, SdResponse::R1, &r1);
-	if(err_code_!=ERROR_CODE_OK) 
+	err_code_ = CommandWrapped(Sd::CMD0, Sd::CMD0_ARG, Sd::CMD0_CRC, SdResponse::R1, &r1);
+	if(err_code_!=Sd::ERROR_CODE_OK) 
 		return err_code_;
 	
-	while(r1 != SD_IN_IDLE_STATE && ++cmdAttempts<CMD0_MAX_ATTEMPTS) {	
-		err_code_ = CommandWrapped(CMD0, CMD0_ARG, CMD0_CRC, SdResponse::R1, &r1);
-		if(err_code_!=ERROR_CODE_OK)
+	while(r1 != SD_IN_IDLE_STATE && ++cmdAttempts<Sd::CMD0_MAX_ATTEMPTS) {	
+		err_code_ = CommandWrapped(Sd::CMD0, Sd::CMD0_ARG, Sd::CMD0_CRC, SdResponse::R1, &r1);
+		if(err_code_!=Sd::ERROR_CODE_OK)
 			return err_code_;
 	}
 	
-	if(cmdAttempts == CMD0_MAX_ATTEMPTS) {
-		err_code_ = ERROR_CODE_NOT_IN_IDLE_STATE;
+	if(cmdAttempts == Sd::CMD0_MAX_ATTEMPTS) {
+		err_code_ = Sd::ERROR_CODE_NOT_IN_IDLE_STATE;
 		return err_code_;
 	}
 	
 	_delay_ms(1);
 	
 	/* Send Interface Conditions (CDM8) */
-	err_code_ = CommandWrapped(CMD8, CMD8_ARG, CMD8_CRC, SdResponse::R7, r37);
-	if(err_code_!=ERROR_CODE_OK)
+	err_code_ = CommandWrapped(Sd::CMD8, Sd::CMD8_ARG, Sd::CMD8_CRC, SdResponse::R7, r37);
+	if(err_code_!=Sd::ERROR_CODE_OK)
 		return err_code_;
 	
-	if(r37[0] != SD_IN_IDLE_STATE) {
-		err_code_ = ERROR_CODE_NOT_IN_IDLE_STATE;
+	if(r37[0] != Sd::SD_IN_IDLE_STATE) {
+		err_code_ = Sd::ERROR_CODE_NOT_IN_IDLE_STATE;
 		return err_code_;
 	}
 	
 	if(r37[4] != 0xAA) {
-		err_code_ = ERROR_CODE_ERROR_IN_R7_RESP;
+		err_code_ = Sd::ERROR_CODE_ERROR_IN_R7_RESP;
 		return err_code_;
 	}
 
 	cmdAttempts = 0;
 	do {
 		/* Send application command (CMD55) */
-		err_code_ = CommandWrapped(CMD55, CMD55_ARG, CMD55_CRC, SdResponse::R1, &r1);
-		if(err_code_!=ERROR_CODE_OK)
+		err_code_ = CommandWrapped(Sd::CMD55, Sd::CMD55_ARG, Sd::CMD55_CRC, SdResponse::R1, &r1);
+		if(err_code_!=Sd::ERROR_CODE_OK)
 			return err_code_;
 		
 		if(SD_R1_NO_ERROR(r1)) {
 			/* Send operating condition (ACMD41) */			
-			err_code_ = CommandWrapped(ACMD41, ACMD41_ARG, ACMD41_CRC, SdResponse::R1, &r1);
-			if(err_code_!=ERROR_CODE_OK)
+			err_code_ = CommandWrapped(Sd::ACMD41, Sd::ACMD41_ARG, Sd::ACMD41_CRC, SdResponse::R1, &r1);
+			if(err_code_!=Sd::ERROR_CODE_OK)
 				return err_code_;
 		}
 		_delay_ms(1);
-	} while(r1 != SD_READY && ++cmdAttempts<CMD55_MAX_ATTEMPTS);
+	} while(r1 != Sd::SD_READY && ++cmdAttempts<Sd::CMD55_MAX_ATTEMPTS);
 
-	if(cmdAttempts == CMD55_MAX_ATTEMPTS) {
-		err_code_ = ERROR_CODE_SD_NOT_READY;
+	if(cmdAttempts == Sd::CMD55_MAX_ATTEMPTS) {
+		err_code_ = Sd::ERROR_CODE_SD_NOT_READY;
 		return err_code_;
 	}
 	
@@ -232,84 +243,84 @@ template <board::Sd num>
 int32_t Sd<num>::ReadSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]) {
 	assert(sd_!=NULL);
 	
-	uint8_t token = SD_NONE_TOKEN, resp1;
+	uint8_t token = Sd::SD_NONE_TOKEN, resp1;
 	uint16_t readAttempts = 0;
 	uint8_t cmd;
 	uint8_t crc;
 	uint8_t temp;
 	
 	err_code_ = Select();
-	if(err_code_!=ERROR_CODE_OK)
+	if(err_code_!=Sd::ERROR_CODE_OK)
 		return err_code_;
 		
-	err_code_ = Command(CMD17, addr, CMD17_CRC);
-	if(err_code_!=ERROR_CODE_OK)
+	err_code_ = Command(Sd::CMD17, addr, Sd::CMD17_CRC);
+	if(err_code_!=Sd::ERROR_CODE_OK)
 		return err_code_;
 	
 	err_code_ = ReadResponse(SdResponse::R1, &resp1);
-	if(err_code_!=ERROR_CODE_OK)
+	if(err_code_!=Sd::ERROR_CODE_OK)
 		return err_code_;
 
-	if(resp1 == SD_READY) {
-		while(token == SD_NONE_TOKEN && ++readAttempts != SD_MAX_READ_ATTEMPTS) {
-			err_code_ = spi_.Transfer(&TEMP0, &token, sizeof(uint8_t));
+	if(resp1 == Sd::SD_READY) {
+		while(token == Sd::SD_NONE_TOKEN && ++readAttempts != Sd::SD_MAX_READ_ATTEMPTS) {
+			err_code_ = spi_.Transfer(&Sd::TEMP0, &token, sizeof(uint8_t));
 			if(err_code_!=ARM_DRIVER_OK)
 				return err_code_;
 		}
 		
 		switch(token) {
-			case SD_START_BLOCK_TOKEN: {
-				for(uint16_t i = 0; i < BLOCK_LENGTH; i++) {
-					err_code_ = spi_.Transfer(&TEMP0, &buf[i], sizeof(uint8_t));
+			case Sd::SD_START_BLOCK_TOKEN: {
+				for(uint16_t i = 0; i < Sd::BLOCK_LENGTH; i++) {
+					err_code_ = spi_.Transfer(&Sd::TEMP0, &buf[i], sizeof(uint8_t));
 					if(err_code_!=ARM_DRIVER_OK)
 						return err_code_;
 				}
 
-				err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+				err_code_ = spi_.Write(&Sd::TEMP0, sizeof(uint8_t));
 				if(err_code_!=ARM_DRIVER_OK)
 					return err_code_;
 			
-				err_code_ = spi_.Write(&TEMP0, sizeof(uint8_t));
+				err_code_ = spi_.Write(&Sd::TEMP0, sizeof(uint8_t));
 				if(err_code_!=ARM_DRIVER_OK)
 					return err_code_;
 				
 				err_code_ = Unselect();
-				if(err_code_!=ERROR_CODE_OK)
+				if(err_code_!=Sd::ERROR_CODE_OK)
 					return err_code_;
 				
-				err_code_ = ERROR_CODE_OK;
+				err_code_ = Sd::ERROR_CODE_OK;
 				return err_code_;
 			}
 			
-			case SD_ERROR_TOKEN: {
+			case Sd::SD_ERROR_TOKEN: {
 				err_code_ = Unselect();
-				if(err_code_!=ERROR_CODE_OK)
+				if(err_code_!=Sd::ERROR_CODE_OK)
 					return err_code_;
-				err_code_ = ERROR_CODE_BUSY_SIGNAL_TIMEOUT;
+				err_code_ = Sd::ERROR_CODE_BUSY_SIGNAL_TIMEOUT;
 				return err_code_;
 			}		
 			
-			case SD_NONE_TOKEN: {
+			case Sd::SD_NONE_TOKEN: {
 				err_code_ = Unselect();
-				if(err_code_!=ERROR_CODE_OK)
+				if(err_code_!=Sd::ERROR_CODE_OK)
 					return err_code_;		
-				err_code_ = ERROR_CODE_NO_RESP_AFTER_R1;
+				err_code_ = Sd::ERROR_CODE_NO_RESP_AFTER_R1;
 				return err_code_;
 			}			
 			
 			default: {
 				err_code_ = Unselect();
-				if(err_code_!=ERROR_CODE_OK)
+				if(err_code_!=Sd::ERROR_CODE_OK)
 					return err_code_;
-				err_code_ = ERROR_CODE_DATA_ERROR;
+				err_code_ = Sd::ERROR_CODE_DATA_ERROR;
 				return err_code_;
 			}					
 		}
 	} else {
 		err_code_ = Unselect();
-		if(err_code_!=ERROR_CODE_OK)
+		if(err_code_!=Sd::ERROR_CODE_OK)
 			return err_code_;
-		err_code_ = ERROR_CODE_ERROR_READING_BLOCK;
+		err_code_ = Sd::ERROR_CODE_ERROR_READING_BLOCK;
 		return err_code_;
 	}
 }
@@ -396,6 +407,29 @@ int32_t Sd<num>::WriteSingleBlock(uint32_t addr, uint8_t buf[BLOCK_LENGTH]) {
 		return err_code_;
 	}
 }
+
+template <board::Sd num>
+int32_t Sd<num>::Erase(uint32_t start_addr, uint32_t end_addr) {
+	assert(sd_!=NULL);
+	
+	uint8_t token = Sd::SD_NONE_TOKEN, resp1, resp1b;
+	uint16_t readAttempts = 0;
+	
+	err_code_ = CommandWrapped(Sd::CMD32, start_addr, Sd::CMD32_CRC, SdResponse::R1, &resp1);
+	if(err_code_!=Sd::ERROR_CODE_OK)
+		return err_code_;
+	
+	err_code_ = CommandWrapped(Sd::CMD33, end_addr, Sd::CMD33_CRC, SdResponse::R1, &resp1);
+	if(err_code_!=Sd::ERROR_CODE_OK)
+		return err_code_;
+	
+	err_code_ = CommandWrapped(Sd::CMD38, Sd::CMD38_ARG, Sd::CMD38_CRC, SdResponse::R1b, &resp1b);
+	if(err_code_!=Sd::ERROR_CODE_OK)
+		return err_code_;
+	
+	return Sd::ERROR_CODE_OK;
+}
+
 
 template <board::Sd num>
 int32_t Sd<num>::Select() {		

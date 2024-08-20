@@ -1,21 +1,17 @@
 #pragma once
 
-#include "../rtos_wrapper/rtos.h"
-#include "../board_api.h"
+#include "../system_abstraction/board_api.h"
+#include "../system_abstraction/data_storage_config.h"
+
 #include "../singelton.h"
-#include "data_storage_config.h"
+
+#include <cstring>
 
 extern uint8_t buf_512[512];
+extern uint32_t buf_20[20];
 extern volatile void _delay_ms(uint32_t delay);
 
 namespace app {
-	
-static constexpr uint32_t DATASTORAGE_SECTOR_COUNT = 1;
-
-static constexpr uint32_t DATASTORAGE_SECTOR_OBC_SENSORS_RANGE_START = 0x00000000;
-static constexpr uint32_t DATASTORAGE_SECTOR_OBC_SENSORS_RANGE_LENGTH = 0x00200000; // 1Gb
-static constexpr uint32_t DATASTORAGE_SECTOR_OBC_SENSORS_SIZE = 40; //!!!!
-static constexpr uint32_t DATASTORAGE_SECTOR_OBC_SENSORS_MAX_NUM = 512 / DATASTORAGE_SECTOR_OBC_SENSORS_SIZE;
 
 template <typename TBoard>
 class DataStorage : public Singleton<DataStorage<TBoard>>  {
@@ -26,16 +22,23 @@ public:
 	static constexpr uint8_t FREE_BYTE = 0xFF;
 	
 	template <board::Sd num>
-	int32_t AddTmeToSd(app::Sector tme_num, uint8_t *tme);
-	
+	int32_t AddTmeToSd(app::Sector tme_num, uint8_t *tme_data);
+
+	template <board::Sd num>
+	int32_t ReadTmeByTime(app::Sector tme_num, uint32_t tme_time, uint8_t *tme_data);
+
 private:
 	DataStorage();
 
+	template <board::Sd num>
+	int32_t FindPageToRead(app::Sector tme_num, uint32_t tme_time, uint32_t *page_to_read);
+
 	TBoard& obc_;
 	int32_t err_code_ = ERROR_CODE_OK;
-	bool sd_writing_is_enabled_ = true;
 
-	uint16_t attempts = 0;
+	uint16_t tme_num_in_page_ = 0;
+	uint32_t page_to_read_ = 0;
+	uint16_t attempts_ = 0;
 
 	TDataStorageSector ds_arr_[DATASTORAGE_SECTOR_COUNT] = {
 		{
@@ -53,7 +56,7 @@ private:
 		do {
 			err_code_ = obc_.SdPageRead(num, addr, buf);
 			_delay_ms(1);
-		} while( err_code_ != ERROR_CODE_OK && ++attempts < ATTEMPTS_COUNT );
+		} while( err_code_ != ERROR_CODE_OK && ++attempts_ < ATTEMPTS_COUNT );
 		
 		if (err_code_ != ERROR_CODE_OK)
 			return err_code_;
@@ -66,22 +69,12 @@ private:
 		do {
 			err_code_ = obc_.SdPageWrite(num, addr, buf);
 			_delay_ms(1);
-		} while( err_code_ != ERROR_CODE_OK && ++attempts < ATTEMPTS_COUNT );
+		} while( err_code_ != ERROR_CODE_OK && ++attempts_ < ATTEMPTS_COUNT );
 		
 		if (err_code_ != ERROR_CODE_OK)
 			return err_code_;
 		
 		return ERROR_CODE_OK;
-	}
-	
-	template <board::Sd num>
-	inline __attribute__((always_inline)) void BlockSdUsing() {
-		sd_writing_is_enabled_ = false;
-	}
-	
-	template <board::Sd num>
-	inline __attribute__((always_inline)) void UnblockSdUsing() {
-		sd_writing_is_enabled_ = true;
 	}
 };
 
@@ -104,7 +97,7 @@ int32_t DataStorage<TBoard>::AddTmeToSd(app::Sector tme_num, uint8_t *tme) {
 			return err_code_;
 	}
 	
-	memcpy((void*)&buf_512[ds_arr_[tme_code].tme_num_in_page*ds_arr_[tme_code].tme_size], (void*)tme, ds_arr_[tme_code].tme_size);
+	memcpy((void*)&buf_512[ds_arr_[tme_code].tme_num_in_page * ds_arr_[tme_code].tme_size], (void*)tme, ds_arr_[tme_code].tme_size);
 	
 	err_code_ = WriteBufToPageWithAddr<num>(ds_arr_[tme_code].page_to_write, buf_512);
 	if (err_code_ != ERROR_CODE_OK)
@@ -117,6 +110,40 @@ int32_t DataStorage<TBoard>::AddTmeToSd(app::Sector tme_num, uint8_t *tme) {
 		if (ds_arr_[tme_code].page_to_write == ds_arr_[tme_code].tme_range_start + ds_arr_[tme_code].tme_range_length)
 			ds_arr_[tme_code].page_to_write = ds_arr_[tme_code].tme_range_start;
 	}
+	
+	return ERROR_CODE_OK;
+}
+
+template <typename TBoard>
+template <board::Sd num>
+int32_t DataStorage<TBoard>::ReadTmeByTime(app::Sector tme_num, uint32_t tme_time, uint8_t *tme_data) {
+	uint8_t tme_code = static_cast<uint8_t>(tme_num);
+
+	uint32_t page_to_read;
+	uint8_t i;
+	
+	err_code_ = FindPageToRead(tme_num, tme_time, (uint32_t*)&page_to_read_);
+	if (err_code_ != ERROR_CODE_OK)
+		return err_code_;
+	
+	for(i = 0; i < ds_arr_[tme_code].tme_max_num_in_page; i++)
+		memcpy((void*)&buf_20[i], (void*)&buf_512[i * ds_arr_[tme_code].tme_size], sizeof(uint32_t));
+
+	for(i = 0; i < ds_arr_[tme_code].tme_max_num_in_page; i++)
+		if (buf_20[i] == tme_time)
+			page_to_read_ = i;
+		
+	memcpy((void*)tme_data, (void*)&buf_512[tme_num_in_page_ * ds_arr_[tme_code].tme_size], ds_arr_[tme_code].tme_size);
+			
+	return ERROR_CODE_OK;
+}
+
+template <typename TBoard>
+template <board::Sd num>
+int32_t DataStorage<TBoard>::FindPageToRead(app::Sector tme_num, uint32_t tme_time, uint32_t *page_to_read) {
+	uint8_t tme_code = static_cast<uint8_t>(tme_num);
+	
+	// todo: Add magic
 	
 	return ERROR_CODE_OK;
 }

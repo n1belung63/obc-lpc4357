@@ -9,7 +9,7 @@ extern "C" {
 }
 
 #include "board_settings.h"
-#include "board_api.h"
+#include "system_abstraction/board_api.h"
 
 #include "wrappers/uart_wrapper.h"
 #include "wrappers/i2c_wrapper.h"
@@ -30,7 +30,7 @@ public:
 
 	virtual int32_t SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[512]) override;
   virtual int32_t SdPageRead(Sd num, uint32_t page_addr, uint8_t page[512]) override;
-  virtual int32_t SdSectorErase(Sd num, SdSector sector_num) override;
+  virtual int32_t SdRangeErase(Sd num, uint32_t start_addr, uint32_t end_addr) override;
   virtual int32_t MagnRead(Magn num, MagnData& data) override;
 	virtual int32_t SdBlock(Sd num) override;
 	virtual int32_t SdUnblock(Sd num) override;
