@@ -1,0 +1,6 @@
+[submodule "pool-allocator"]
+	path = pool-allocator
+	url = https://github.com/n1belung63/pool-allocator.git
+[submodule "singelton"]
+	path = singelton
+	url = https://github.com/n1belung63/singelton.git

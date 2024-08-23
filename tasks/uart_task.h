@@ -10,9 +10,12 @@
 #include "../wrappers/uart_wrapper.h"
 #include "../config.h"
 
+#include "../singelton/singelton.h"
+
 using namespace std::chrono_literals;
 
-extern uint8_t buf_512[512];
+template<typename TPoolAllocatorPort>
+using DefaultAllocator = allocator::PoolAllocator<allocator::DefaultBlockSize,allocator::DefaultBlockCount, TPoolAllocatorPort>;
 
 template <typename TBoard>
 class UartTask : public wrtos::Task<static_cast<std::size_t>(wrtos::StackDepth::minimal)> {
@@ -20,11 +23,13 @@ public:
 	UartTask();
   virtual void Execute() override;
 private:
-	char buf_[140] = {0};				//todo: to refactor
+	DefaultAllocator<allocator::PoolAllocatorPort>& allocator_;
 };
 
 template <typename TBoard>
-UartTask<TBoard>::UartTask() { }
+UartTask<TBoard>::UartTask()
+	: allocator_(Singleton<DefaultAllocator<allocator::PoolAllocatorPort>>::GetInstance())
+	{ }
 
 template <typename TBoard>
 void UartTask<TBoard>::Execute() {
@@ -33,17 +38,26 @@ void UartTask<TBoard>::Execute() {
 	UartDebug& debug = UartDebug::GetInstance();
 
 	app::TObcMagnTme tme = {0};
+	// app::TObcMagnTme* tme = static_cast<app::TObcMagnTme*>(allocator_.allocate(sizeof(app::TObcMagnTme)));
+	
 	int32_t res = 0;
 	
 	uint8_t command = 0, sd_num = 0, mpu_num = 0;
 	uint16_t data_length = 0;
 	
+	static constexpr uint16_t BUF_140_SIZE = 140;
+	static constexpr uint16_t BUF_512_SIZE = 512;
+	
+	uint8_t* buf_140 = static_cast<uint8_t*>(allocator_.allocate(BUF_140_SIZE));
+	
 	while(1) {
 		if (debug.IsByteReceived()) {
-			memset(buf_, 0, sizeof(buf_));
+			memset(buf_140, 0, BUF_140_SIZE);
 			
 			command = 0;
 			debug.Read(&command, 1);
+			
+			uint8_t* buf_512 = static_cast<uint8_t*>(allocator_.allocate(BUF_512_SIZE));
 			
 			switch (static_cast<debug_config::Commands>(command)) {
 				case debug_config::Commands::GET_SD_STATUS: {
@@ -52,15 +66,15 @@ void UartTask<TBoard>::Execute() {
 				
 				case debug_config::Commands::READ_SD: {
 					using type = debug_config::READ_SD_REQUEST_t;
-					debug.Read(buf_, sizeof(type));
-					sd_num = ((type*)buf_)->sd_num;
+					debug.Read(buf_140, sizeof(type));
+					sd_num = ((type*)buf_140)->sd_num;
 					
 					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
 						break;
 					}
 					
-					res = obc.SdPageRead(static_cast<board::Sd>(sd_num), ((type*)buf_)->addr, buf_512);
+					res = obc.SdPageRead(static_cast<board::Sd>(sd_num), ((type*)buf_140)->addr, buf_512);
 					if (res != board::ERROR_CODE_OK) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::NACK));
 						debug.Write(&res, sizeof(res));
@@ -68,31 +82,31 @@ void UartTask<TBoard>::Execute() {
 					}
 					
 					debug.WriteByte(static_cast<char>(debug_config::Response::ACK));
-					debug.Write(&buf_512[128 * ((type*)buf_)->quarter], 128);
+					debug.Write(&buf_512[128 * ((type*)buf_140)->quarter], 128);
 					
 					break;
 				}
 				
 				case debug_config::Commands::WRITE_SD: {
 					using type = debug_config::WRITE_SD_REQUEST_t;
-					debug.Read(buf_, sizeof(type));
-					sd_num = ((type*)buf_)->sd_num;
+					debug.Read(buf_140, sizeof(type));
+					sd_num = ((type*)buf_140)->sd_num;
 
 					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
 						break;
 					}
 					
-					res = obc.SdPageRead(static_cast<board::Sd>(sd_num), ((type*)buf_)->addr, buf_512);
+					res = obc.SdPageRead(static_cast<board::Sd>(sd_num), ((type*)buf_140)->addr, buf_512);
 					if (res != board::ERROR_CODE_OK) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::NACK));
 						debug.Write(&res, sizeof(res));
 						break;
 					}
 					
-					memcpy(&buf_512[((type*)buf_)->quarter * 128], ((type*)buf_)->data, 128);
+					memcpy(&buf_512[((type*)buf_140)->quarter * 128], ((type*)buf_140)->data, 128);
 					
-					res = obc.SdPageWrite(static_cast<board::Sd>(sd_num), ((type*)buf_)->addr, buf_512);
+					res = obc.SdPageWrite(static_cast<board::Sd>(sd_num), ((type*)buf_140)->addr, buf_512);
 					if (res != board::ERROR_CODE_OK) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::NACK));
 						debug.Write(&res, sizeof(res));
@@ -106,15 +120,15 @@ void UartTask<TBoard>::Execute() {
 
 				case debug_config::Commands::ERASE_SD: {
 					using type = debug_config::ERASE_SD_REQUEST_t;
-					debug.Read(buf_, sizeof(type));
-					sd_num = ((type*)buf_)->sd_num;
+					debug.Read(buf_140, sizeof(type));
+					sd_num = ((type*)buf_140)->sd_num;
 					
 					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
 						break;
 					}
 					
-					res = obc.SdRangeErase(static_cast<board::Sd>(sd_num), ((type*)buf_)->addr_start, ((type*)buf_)->addr_end);
+					res = obc.SdRangeErase(static_cast<board::Sd>(sd_num), ((type*)buf_140)->addr_start, ((type*)buf_140)->addr_end);
 					if (res != board::ERROR_CODE_OK) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::NACK));
 						debug.Write(&res, sizeof(res));
@@ -128,8 +142,8 @@ void UartTask<TBoard>::Execute() {
 				
 				case debug_config::Commands::BLOCK_SD: {
 					using type = debug_config::BLOCK_SD_REQUEST_t;
-					debug.Read(buf_, sizeof(type));
-					sd_num = ((type*)buf_)->sd_num;
+					debug.Read(buf_140, sizeof(type));
+					sd_num = ((type*)buf_140)->sd_num;
 					
 					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
@@ -150,8 +164,8 @@ void UartTask<TBoard>::Execute() {
 				
 				case debug_config::Commands::UNBLOCK_SD: {
 					using type = debug_config::UNBLOCK_SD_REQUEST_t;
-					debug.Read(buf_, sizeof(type));
-					sd_num = ((type*)buf_)->sd_num;
+					debug.Read(buf_140, sizeof(type));
+					sd_num = ((type*)buf_140)->sd_num;
 					
 					if ( sd_num  != static_cast<uint8_t>(board::Sd::kNum1) && sd_num  != static_cast<uint8_t>(board::Sd::kNum2) ) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
@@ -172,8 +186,8 @@ void UartTask<TBoard>::Execute() {
 
 				case debug_config::Commands::READ_MPU: {
 					using type = debug_config::READ_MPU_REQUEST_t;
-					debug.Read(buf_, sizeof(type));
-					mpu_num = ((type*)buf_)->mpu_num;
+					debug.Read(buf_140, sizeof(type));
+					mpu_num = ((type*)buf_140)->mpu_num;
 					
 					if ( mpu_num  != static_cast<uint8_t>(board::Magn::kNum1) && mpu_num  != static_cast<uint8_t>(board::Magn::kNum2) ) {
 						debug.WriteByte(static_cast<char>(debug_config::Response::ERR));
@@ -210,6 +224,8 @@ void UartTask<TBoard>::Execute() {
 				}
 
 			}
+		
+			allocator_.deallocate((void*)buf_512, BUF_512_SIZE);
 		}
 		SleepUntil(1ms);
 	}

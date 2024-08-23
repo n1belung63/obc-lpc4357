@@ -26,6 +26,7 @@ void DataAcquisitionTask<TBoard>::Execute() {
 	app::DataStorage<TBoard>& data_storage = app::DataStorage<TBoard>::GetInstance();
 	
 	app::TObcMagnTme tme = {0};
+	// app::TObcMagnTme* tme = static_cast<app::TObcMagnTme*>(allocator_.allocate(sizeof(app::TObcMagnTme)));
 
 	while(true) {
 		for ( uint8_t num = 0; num < board::MAGN_COUNT; ++num ) {

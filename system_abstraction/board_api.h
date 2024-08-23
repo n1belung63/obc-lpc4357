@@ -19,9 +19,6 @@ typedef struct {
 	uint16_t T;
 } MagnData;
 
-static constexpr uint8_t SD_COUNT = 2;
-static constexpr uint8_t MAGN_COUNT = 2;
-
 enum class Sd { kNum1, kNum2 };
 enum class Magn { kNum1, kNum2 };
 //enum class SdSector { kMagn };

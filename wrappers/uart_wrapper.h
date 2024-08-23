@@ -3,7 +3,7 @@
 #include "Driver_USART.h"
 #include "USART_LPC43xx.h"
 
-#include "../singelton.h"
+#include "../singelton/singelton.h"
 #include "../board_settings.h"
 
 #include <cstdint>

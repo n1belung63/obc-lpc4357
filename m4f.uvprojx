@@ -411,7 +411,7 @@
             <File>
               <FileName>singelton.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\singelton.h</FilePath>
+              <FilePath>.\singelton\singelton.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -503,6 +503,11 @@
               <FileType>5</FileType>
               <FilePath>.\system_abstraction\data_storage_config.h</FilePath>
             </File>
+            <File>
+              <FileName>pool_allocator_port_api.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\pool-allocator\pool_allocator_port_api.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -512,6 +517,16 @@
               <FileName>data_storage.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\application\data_storage.h</FilePath>
+            </File>
+            <File>
+              <FileName>pool_allocator.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\pool-allocator\pool_allocator.h</FilePath>
+            </File>
+            <File>
+              <FileName>pool_allocator_port.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\pool-allocator\pool_allocator_port.h</FilePath>
             </File>
           </Files>
         </Group>

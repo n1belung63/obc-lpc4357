@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../singelton.h"
+#include "../singelton/singelton.h"
 #include "../wrappers/i2c_wrapper.h"
 #include "../board_settings.h"
 

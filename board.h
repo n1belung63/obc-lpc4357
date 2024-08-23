@@ -14,7 +14,7 @@ extern "C" {
 #include "wrappers/uart_wrapper.h"
 #include "wrappers/i2c_wrapper.h"
 #include "wrappers/spi_wrapper.h"
-#include "singelton.h"
+#include "singelton/singelton.h"
 
 namespace board {
 

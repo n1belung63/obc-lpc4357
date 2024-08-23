@@ -3,7 +3,7 @@
 #include "Driver_I2C.h"
 #include "I2C_LPC43xx.h"
 
-#include "../singelton.h"
+#include "../singelton/singelton.h"
 #include "../board_settings.h"
 
 #include <cstdint>

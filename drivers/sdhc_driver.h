@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../singelton.h"
+#include "../singelton/singelton.h"
 #include "../wrappers/spi_wrapper.h"
 #include "../board_settings.h"
 #include "../system_abstraction/board_api.h"
@@ -20,9 +20,9 @@ typedef struct {
 
 enum class SdResponse { R1, R1b, R2, R3, R7 };
 
-inline static SD_t sd_arr[SAMSAT_SD_COUNT] = {
-	{ .sd_i = SAMSAT_SD1_NUM, .sd_ss_port = SAMSAT_SD1_PORT, .sd_ss_pin = SAMSAT_SD1_PIN },
-	{ .sd_i = SAMSAT_SD2_NUM, .sd_ss_port = SAMSAT_SD2_PORT, .sd_ss_pin = SAMSAT_SD2_PIN }
+inline static SD_t sd_arr[board::SD_COUNT] = {
+	{ .sd_i = board::SD1_NUM, .sd_ss_port = board::SD1_PORT, .sd_ss_pin = board::SD1_PIN },
+	{ .sd_i = board::SD2_NUM, .sd_ss_port = board::SD2_PORT, .sd_ss_pin = board::SD2_PIN }
 };
 	
 template <board::Sd num>
@@ -149,10 +149,10 @@ Sd<num>::Sd() : sd_(Resolve()), spi_(Singleton<Spi>::GetInstance()) {
 template <board::Sd num>
 SD_t* Sd<num>::Resolve() {
 	if constexpr (num == board::Sd::kNum1) {
-		return &sd_arr[SAMSAT_SD1_NUM];
+		return &sd_arr[board::SD1_NUM];
 	}
 	if constexpr (num == board::Sd::kNum2) {
-		return &sd_arr[SAMSAT_SD2_NUM];
+		return &sd_arr[board::SD2_NUM];
 	}
 	return NULL;
 }

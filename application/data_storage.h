@@ -3,16 +3,20 @@
 #include "../system_abstraction/board_api.h"
 #include "../system_abstraction/data_storage_config.h"
 
-#include "../singelton.h"
+#include "../singelton/singelton.h"
+
+#include "../pool-allocator/pool_allocator.h"
+#include "../pool-allocator/pool_allocator_port.h"
 
 #include <cstring>
 
-extern uint8_t buf_512[512];
-extern uint32_t buf_20[20];
 extern volatile void _delay_ms(uint32_t delay);
 
-namespace app {
+template<typename TPoolAllocatorPort>
+using DefaultAllocator = allocator::PoolAllocator<allocator::DefaultBlockSize,allocator::DefaultBlockCount, TPoolAllocatorPort>;
 
+namespace app {
+	
 template <typename TBoard>
 class DataStorage : public Singleton<DataStorage<TBoard>>  {
 	friend class Singleton<DataStorage<TBoard>>;
@@ -20,6 +24,7 @@ public:
 	static constexpr int32_t ERROR_CODE_OK = 0;
 	static constexpr uint16_t ATTEMPTS_COUNT = 100;
 	static constexpr uint8_t FREE_BYTE = 0xFF;
+	static constexpr uint16_t BUFFER_SIZE = 512;
 	
 	template <board::Sd num>
 	int32_t AddTmeToSd(app::Sector tme_num, uint8_t *tme_data);
@@ -34,6 +39,8 @@ private:
 	int32_t FindPageToRead(app::Sector tme_num, uint32_t tme_time, uint32_t *page_to_read);
 
 	TBoard& obc_;
+	DefaultAllocator<allocator::PoolAllocatorPort>& allocator_;
+	
 	int32_t err_code_ = ERROR_CODE_OK;
 
 	uint16_t tme_num_in_page_ = 0;
@@ -80,26 +87,29 @@ private:
 
 template <typename TBoard>
 DataStorage<TBoard>::DataStorage() 
-	: obc_(Singleton<TBoard>::GetInstance())
+	: obc_(Singleton<TBoard>::GetInstance()),
+	allocator_(Singleton<DefaultAllocator<allocator::PoolAllocatorPort>>::GetInstance())
 	{ }
 
 template <typename TBoard>
 template <board::Sd num>
 int32_t DataStorage<TBoard>::AddTmeToSd(app::Sector tme_num, uint8_t *tme) {
+	uint8_t* buf = static_cast<uint8_t*>(allocator_.allocate(BUFFER_SIZE));
+	
 	uint8_t tme_code = static_cast<uint8_t>(tme_num);
 	
 	if (ds_arr_[tme_code].tme_num_in_page == 0)
-		memset((void*)buf_512, FREE_BYTE, sizeof(buf_512));
+		memset((void*)buf, FREE_BYTE, BUFFER_SIZE);
 	
 	if (ds_arr_[tme_code].tme_num_in_page > 0 && ds_arr_[tme_code].tme_num_in_page <= ds_arr_[tme_code].tme_max_num_in_page) {
-		err_code_ = ReadPageWithAddrToBuf<num>(ds_arr_[tme_code].page_to_write, buf_512);
+		err_code_ = ReadPageWithAddrToBuf<num>(ds_arr_[tme_code].page_to_write, buf);
 		if (err_code_ != ERROR_CODE_OK)
 			return err_code_;
 	}
 	
-	memcpy((void*)&buf_512[ds_arr_[tme_code].tme_num_in_page * ds_arr_[tme_code].tme_size], (void*)tme, ds_arr_[tme_code].tme_size);
+	memcpy((void*)&buf[ds_arr_[tme_code].tme_num_in_page * ds_arr_[tme_code].tme_size], (void*)tme, ds_arr_[tme_code].tme_size);
 	
-	err_code_ = WriteBufToPageWithAddr<num>(ds_arr_[tme_code].page_to_write, buf_512);
+	err_code_ = WriteBufToPageWithAddr<num>(ds_arr_[tme_code].page_to_write, buf);
 	if (err_code_ != ERROR_CODE_OK)
 		return err_code_;
 			
@@ -111,12 +121,17 @@ int32_t DataStorage<TBoard>::AddTmeToSd(app::Sector tme_num, uint8_t *tme) {
 			ds_arr_[tme_code].page_to_write = ds_arr_[tme_code].tme_range_start;
 	}
 	
+	allocator_.deallocate((void*)buf, BUFFER_SIZE);
+	
 	return ERROR_CODE_OK;
 }
 
 template <typename TBoard>
 template <board::Sd num>
 int32_t DataStorage<TBoard>::ReadTmeByTime(app::Sector tme_num, uint32_t tme_time, uint8_t *tme_data) {
+	uint8_t* buf = static_cast<uint8_t*>(allocator_.allocate(BUFFER_SIZE));
+	uint32_t* time_buf = static_cast<uint32_t*>(allocator_.allocate(20*sizeof(uint32_t)));
+	
 	uint8_t tme_code = static_cast<uint8_t>(tme_num);
 
 	uint32_t page_to_read;
@@ -127,13 +142,16 @@ int32_t DataStorage<TBoard>::ReadTmeByTime(app::Sector tme_num, uint32_t tme_tim
 		return err_code_;
 	
 	for(i = 0; i < ds_arr_[tme_code].tme_max_num_in_page; i++)
-		memcpy((void*)&buf_20[i], (void*)&buf_512[i * ds_arr_[tme_code].tme_size], sizeof(uint32_t));
+		memcpy((void*)&time_buf[i], (void*)&buf[i * ds_arr_[tme_code].tme_size], sizeof(uint32_t));
 
 	for(i = 0; i < ds_arr_[tme_code].tme_max_num_in_page; i++)
-		if (buf_20[i] == tme_time)
+		if (time_buf[i] == tme_time)
 			page_to_read_ = i;
 		
-	memcpy((void*)tme_data, (void*)&buf_512[tme_num_in_page_ * ds_arr_[tme_code].tme_size], ds_arr_[tme_code].tme_size);
+	memcpy((void*)tme_data, (void*)&buf[tme_num_in_page_ * ds_arr_[tme_code].tme_size], ds_arr_[tme_code].tme_size);
+		
+	allocator_.deallocate((void*)buf, BUFFER_SIZE);
+	allocator_.deallocate((void*)time_buf, 20*sizeof(uint32_t));
 			
 	return ERROR_CODE_OK;
 }

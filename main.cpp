@@ -5,15 +5,14 @@
 #include "tasks/uart_task.h"
 
 #include "application/data_storage.h"
+#include "pool-allocator/pool_allocator.h"
 
 volatile void _delay_ms(uint32_t delay);
 
 using namespace wrtos;
 using namespace board;
 using namespace app;
-
-uint8_t buf_512[512] = {0};	//todo: to refactor static allocator???
-uint32_t buf_20[20] = {0};	//todo: to refactor static allocator???
+using namespace allocator;
 
 volatile void _delay_ms(uint32_t delay) {
 	volatile uint32_t cyc = delay * ((SystemCoreClock / 1000) / 6);	// maximum delay is 14.3165 s
@@ -29,7 +28,12 @@ volatile void _delay_ms(uint32_t delay) {
 	);
 }
 
+template<typename TPoolAllocatorPort>
+using DefaultAllocator = PoolAllocator<DefaultBlockSize,DefaultBlockCount, TPoolAllocatorPort>;
+
 int main(void) {
+	DefaultAllocator<PoolAllocatorPort>& allocator = DefaultAllocator<PoolAllocatorPort>::GetInstance();
+	
 	Board& obc = Board::GetInstance();
 	DataStorage<Board>& data_storage = DataStorage<Board>::GetInstance();
 		

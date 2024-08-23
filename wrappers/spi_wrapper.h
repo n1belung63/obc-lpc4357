@@ -8,7 +8,7 @@ extern "C" {
 #include "SCU_LPC43xx.h"
 }
 
-#include "../singelton.h"
+#include "../singelton/singelton.h"
 #include "../board_settings.h"
 
 #include <cstdint>
