@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../singelton/singelton.h"
-#include "../wrappers/i2c_wrapper.h"
-#include "../board_settings.h"
+#include "singelton/singelton.h"
+#include "wrappers/i2c_wrapper.h"
+#include "board_settings.h"
 
 #include <cstdint>
 #include <cstring>

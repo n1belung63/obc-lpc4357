@@ -1,16 +1,18 @@
 #pragma once
 
-#include "../rtos_wrapper/rtos.h"
+#include "rtos_wrapper/rtos.h"
 
-#include "../system_abstraction/board_api.h"
-#include "../system_abstraction/data_storage_config.h"
+#include "system_abstraction/board_api.h"
+#include "system_abstraction/data_storage_config.h"
 
-#include "../application/data_storage.h"
+#include "application/data_storage.h"
 
-#include "../wrappers/uart_wrapper.h"
-#include "../config.h"
+#include "wrappers/uart_wrapper.h"
+#include "config.h"
 
-#include "../singelton/singelton.h"
+#include "pool_allocator_port.h"
+
+#include "singelton/singelton.h"
 
 using namespace std::chrono_literals;
 
@@ -82,7 +84,7 @@ void UartTask<TBoard>::Execute() {
 					}
 					
 					debug.WriteByte(static_cast<char>(debug_config::Response::ACK));
-					debug.Write(&buf_512[128 * ((type*)buf_140)->quarter], 128);
+					debug.Write(&buf_512[debug_config::SD_PAGE_QUARTER_LENGTH * ((type*)buf_140)->quarter], debug_config::SD_PAGE_QUARTER_LENGTH);
 					
 					break;
 				}
@@ -104,7 +106,7 @@ void UartTask<TBoard>::Execute() {
 						break;
 					}
 					
-					memcpy(&buf_512[((type*)buf_140)->quarter * 128], ((type*)buf_140)->data, 128);
+					memcpy(&buf_512[((type*)buf_140)->quarter * debug_config::SD_PAGE_QUARTER_LENGTH], ((type*)buf_140)->data, debug_config::SD_PAGE_QUARTER_LENGTH);
 					
 					res = obc.SdPageWrite(static_cast<board::Sd>(sd_num), ((type*)buf_140)->addr, buf_512);
 					if (res != board::ERROR_CODE_OK) {

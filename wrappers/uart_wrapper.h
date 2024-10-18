@@ -3,8 +3,8 @@
 #include "Driver_USART.h"
 #include "USART_LPC43xx.h"
 
-#include "../singelton/singelton.h"
-#include "../board_settings.h"
+#include "singelton/singelton.h"
+#include "board_settings.h"
 
 #include <cstdint>
 #include <cassert>
@@ -178,8 +178,7 @@ int32_t Uart<num>::Read(void *data_in, uint16_t length) {
 
 	for (uint16_t i = 0; i < length; ++i) {
 		attempts = 0;
-		while (!(USART_periph->LSR & USART_LSR_RDR))
-		{ 
+		while (!(USART_periph->LSR & USART_LSR_RDR)) { 
 			if (++attempts > ATTEMPTS_COUNT)
 				return ARM_DRIVER_ERROR_TIMEOUT;
 		}

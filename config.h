@@ -3,6 +3,8 @@
 #include <cstdint>
 
 namespace debug_config {
+
+static constexpr uint16_t SD_PAGE_QUARTER_LENGTH = 128;
 	
 enum class Response {
 	ACK = 0x06,
@@ -13,9 +15,9 @@ enum class Response {
 
 enum class Commands {
 	GET_SD_STATUS = 1,
-  READ_SD = 2,
-  WRITE_SD = 3,
-  ERASE_SD = 4,
+	READ_SD = 2,
+	WRITE_SD = 3,
+	ERASE_SD = 4,
 	BLOCK_SD = 5,
 	UNBLOCK_SD = 6,
 	READ_MPU = 7,

@@ -30,18 +30,20 @@ class Config():
         ]
 
     class ReadSdResponse(Structure):
+        _SD_PAGE_QUARTER_LENGTH = 128
         _pack_ = 1
         _fields_ = [
-            ("data", c_ubyte * 128)
+            ("data", c_ubyte * _SD_PAGE_QUARTER_LENGTH)
         ]
 
     class WriteSdRequest(Structure):
+        _SD_PAGE_QUARTER_LENGTH = 128
         _pack_ = 1
         _fields_ = [
             ("sd_num", c_ubyte),
             ("addr", c_uint),
             ("quarter", c_ubyte),
-            ("data", c_ubyte * 128)
+            ("data", c_ubyte * _SD_PAGE_QUARTER_LENGTH)
         ]
 
     class EraseSdRequest(Structure):

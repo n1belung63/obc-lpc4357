@@ -4,3 +4,9 @@
 [submodule "singelton"]
 	path = singelton
 	url = https://github.com/n1belung63/singelton.git
+[submodule "cpp_tests/rapidjson"]
+	path = cpp_tests/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
+[submodule "cpp_tests/googletest"]
+	path = cpp_tests/googletest
+	url = https://github.com/google/googletest.git

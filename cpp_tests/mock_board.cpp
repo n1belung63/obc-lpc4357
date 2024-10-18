@@ -1,8 +1,11 @@
 #include "mock_board.h"
 
 #include <cassert>
+#include <fstream>
+#include <iostream>
 
 using namespace board;
+using namespace std;
 
 extern volatile void _delay_ms(uint32_t delay);
 
@@ -13,48 +16,42 @@ MockBoard::MockBoard() {
 	status_pool_.mpu[static_cast<uint8_t>(Magn::kNum2)] = Status::kWorked;
 }
 
-int32_t MockBoard::SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[512]) {
+int32_t MockBoard::SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[board::SD_PAGE_SIZE]) {
 	assert(num == Sd::kNum1 || num == Sd::kNum2);
-	
-	// switch(num) {
-	// 	case Sd::kNum1: {
-	// 		if (status_pool_.sd[static_cast<uint8_t>(Sd::kNum1)] == Status::kFailed) {
-	// 			return ERROR_CODE_NOT_INITED;
-	// 		}		
-	// 		Sd0& sd0 = Sd0::GetInstance();
-	// 		return sd0.WriteSingleBlock(page_addr, page);
-	// 	}
-			
-	// 	case Sd::kNum2: {
-	// 		if (status_pool_.sd[static_cast<uint8_t>(Sd::kNum2)]  == Status::kFailed) {
-	// 			return ERROR_CODE_NOT_INITED;
-	// 		}	
-	// 		Sd1& sd1 = Sd1::GetInstance();
-	// 		return sd1.WriteSingleBlock(page_addr, page);
-	// 	}
-	// }
+
+	auto write_single_block = [](Sd num, uint32_t page_addr, uint8_t page[board::SD_PAGE_SIZE]) {
+		string file_name = "pages\\sd_"s + to_string(static_cast<uint8_t>(num)) + "_page_" + to_string(page_addr) + ".dat"s;
+		ofstream file(file_name, ios::out | ios::binary);	
+		if (file.is_open()) {
+			file.write((char*)&page[0], SD_PAGE_SIZE);
+		}
+		file.close();
+	};
+
+	if (status_pool_.sd[static_cast<uint8_t>(num)] == Status::kFailed) {
+		return ERROR_CODE_NOT_INITED;
+	}		
+	write_single_block(num, page_addr, page);
+	return ERROR_CODE_OK;
 }
 
-int32_t MockBoard::SdPageRead(Sd num, uint32_t page_addr, uint8_t page[512]) {
+int32_t MockBoard::SdPageRead(Sd num, uint32_t page_addr, uint8_t page[board::SD_PAGE_SIZE]) {
 	assert(num == Sd::kNum1 || num == Sd::kNum2);
-	
-	// switch(num) {
-	// 	case Sd::kNum1: {
-	// 		if (status_pool_.sd[static_cast<uint8_t>(Sd::kNum1)] == Status::kFailed) {
-	// 			return ERROR_CODE_NOT_INITED;
-	// 		}					
-	// 		Sd0& sd0 = Sd0::GetInstance();
-	// 		return sd0.ReadSingleBlock(page_addr, page);
-	// 	}
-			
-	// 	case Sd::kNum2: {
-	// 		if (status_pool_.sd[static_cast<uint8_t>(Sd::kNum2)] == Status::kFailed) {
-	// 			return ERROR_CODE_NOT_INITED;
-	// 		}	
-	// 		Sd1& sd1 = Sd1::GetInstance();
-	// 		return sd1.ReadSingleBlock(page_addr, page);
-	// 	}
-	// }
+
+	auto read_single_block = [](Sd num, uint32_t page_addr, uint8_t page[SD_PAGE_SIZE]) {
+		string file_name = "pages\\sd_"s + to_string(static_cast<uint8_t>(num)) + "_page_" + to_string(page_addr) + ".dat"s;
+		ifstream file(file_name, ios::out | ios::binary);	
+		if (file.is_open()) {
+			file.read((char*)&page[0], SD_PAGE_SIZE);
+		}
+		file.close();
+	};
+
+	if (status_pool_.sd[static_cast<uint8_t>(num)] == Status::kFailed) {
+		return ERROR_CODE_NOT_INITED;
+	}		
+	read_single_block(num, page_addr, page);
+	return ERROR_CODE_OK;
 }
 
 int32_t MockBoard::SdBlock(Sd num) {
@@ -77,6 +74,9 @@ int32_t MockBoard::SdUnblock(Sd num) {
 
 int32_t MockBoard::SdRangeErase(Sd num, uint32_t start_addr, uint32_t end_addr) {
 	assert(num == Sd::kNum1 || num == Sd::kNum2);
+	return ERROR_CODE_OK;
+
+	//todo: delete binary???
 	
 	// switch(num) {
 	// 	case Sd::kNum1: {
@@ -99,6 +99,9 @@ int32_t MockBoard::SdRangeErase(Sd num, uint32_t start_addr, uint32_t end_addr) 
 
 int32_t MockBoard::MagnRead(Magn num, MagnData& data) {
 	assert(num == Magn::kNum1 || num == Magn::kNum2);
+	return ERROR_CODE_OK;
+
+	//todo: create random data???
 	
 	// switch(num) {
 	// 	case Magn::kNum1: {

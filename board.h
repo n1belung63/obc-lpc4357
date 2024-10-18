@@ -28,8 +28,8 @@ struct Board : public Singleton<Board>, public IBoard {
 public:
 	static constexpr int32_t ERROR_CODE_NOT_INITED = -40;
 
-	virtual int32_t SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[512]) override;
-  virtual int32_t SdPageRead(Sd num, uint32_t page_addr, uint8_t page[512]) override;
+	virtual int32_t SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[board::SD_PAGE_SIZE]) override;
+  virtual int32_t SdPageRead(Sd num, uint32_t page_addr, uint8_t page[board::SD_PAGE_SIZE]) override;
   virtual int32_t SdRangeErase(Sd num, uint32_t start_addr, uint32_t end_addr) override;
   virtual int32_t MagnRead(Magn num, MagnData& data) override;
 	virtual int32_t SdBlock(Sd num) override;

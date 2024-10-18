@@ -1,35 +1,51 @@
 #pragma once
 
-#include <cstdint>
+#include "application/data_storage_config_api.h"
+#include "system_abstraction/board_api.h"
+#include "board_settings.h"
 
-#include "../system_abstraction/board_api.h"
+#include <cstdint>
+#include <cassert>
+#include <array>
 
 namespace app {
-
-enum class Sector {
-	ObcSensors = 0x00,
-};
-
-static constexpr uint32_t DATASTORAGE_SECTOR_COUNT = 1;
-
-static constexpr uint32_t DATASTORAGE_SECTOR_OBC_SENSORS_RANGE_START = 0x00000000;
-static constexpr uint32_t DATASTORAGE_SECTOR_OBC_SENSORS_RANGE_LENGTH = 0x00200000; // 1Gb
-static constexpr uint32_t DATASTORAGE_SECTOR_OBC_SENSORS_SIZE = 40; //!!!!
-static constexpr uint32_t DATASTORAGE_SECTOR_OBC_SENSORS_MAX_NUM = 512 / DATASTORAGE_SECTOR_OBC_SENSORS_SIZE;
 
 typedef struct __attribute__ ((__packed__)) {
 	uint32_t time;
 	board::MagnData sensors[board::MAGN_COUNT];
 } TObcMagnTme;
 
-typedef struct __attribute__ ((__packed__)) {
-	uint32_t tme_range_start;
-	uint32_t tme_range_length;
-	uint16_t tme_size;
-	uint16_t tme_max_num_in_page;
-	
-	uint16_t tme_num_in_page;
-	uint32_t page_to_write;
-} TDataStorageSector;
+struct DataStorageConfig {
+private:
+	static constexpr uint32_t SECTORS_COUNT_ = 1;
+
+	static constexpr uint32_t SECTOR_OBC_SENSORS_RANGE_START_ = 0x00000000;
+	static constexpr uint32_t SECTOR_OBC_SENSORS_RANGE_LENGTH_ = 0x00200000; // 1Gb
+	static constexpr uint32_t SECTOR_OBC_SENSORS_SIZE_ = sizeof(TObcMagnTme);
+	static constexpr uint32_t SECTOR_OBC_SENSORS_MAX_NUM_ = board::SD_PAGE_SIZE / SECTOR_OBC_SENSORS_SIZE_;
+
+	static constexpr std::array<TDataStorageSectorPars, SECTORS_COUNT_> SECTORS_PARS_ = {
+		{
+			SECTOR_OBC_SENSORS_RANGE_START_,
+			SECTOR_OBC_SENSORS_RANGE_LENGTH_,
+			SECTOR_OBC_SENSORS_SIZE_,
+			SECTOR_OBC_SENSORS_MAX_NUM_,
+		}
+	};
+
+public:
+	static constexpr  TDataStorageSectorPars GetSectorPars(uint8_t sector_num) {
+		assert(sector_num < SECTORS_COUNT_);
+		return SECTORS_PARS_.at(sector_num);
+	}
+
+	static constexpr uint32_t GetSectorsCount() {
+		return SECTORS_COUNT_;
+	}
+
+	enum class Sector {
+		ObcSensors = 0x00,
+	};
+};
 
 }

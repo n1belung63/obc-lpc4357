@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../singelton/singelton.h"
-#include "../wrappers/spi_wrapper.h"
-#include "../board_settings.h"
-#include "../system_abstraction/board_api.h"
+#include "singelton/singelton.h"
+#include "wrappers/spi_wrapper.h"
+#include "board_settings.h"
+#include "system_abstraction/board_api.h"
 
 #include <cstdint>
 #include <cstring>

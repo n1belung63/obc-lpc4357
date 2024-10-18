@@ -13,7 +13,7 @@ using SpiSd = comm::Spi<board::Spi::kSd>;
 
 using Mpu0 = sensor::Mpu9250<board::MpuAddr::A0>;
 using Mpu1 = sensor::Mpu9250<board::MpuAddr::A1>;
-using Pca = chip::Pca9554<board::PcaAddr::A0,0x01,0x0,0xFE>; //todo: to refactor
+using Pca = chip::Pca9554<board::PcaAddr::A0,board::PCA_DIR,board::PCA_POL,board::PCA_STATE>;
 using Sd0 = memory::Sd<board::Sd::kNum1>;
 using Sd1 = memory::Sd<board::Sd::kNum2>;
 
@@ -40,9 +40,9 @@ Board::Board() {
 			
 	_delay_ms(25);
 	
-	SCU_PinConfigure(0x08, 7, SCU_CFG_MODE_FUNC0);	/* EN LPC3 - SD and SPIF */
-	GPIO_SetDir (4, 7, GPIO_DIR_OUTPUT);
-	GPIO_PinWrite(4, 7, 0);
+	SCU_PinConfigure(LPC3_PORT, LPC3_PIN, SCU_CFG_MODE_FUNC0);	/* EN LPC3 - SD and SPIF */
+	GPIO_SetDir (LPC3_GPIO_PORT, LPC3_GPIO_NUM, GPIO_DIR_OUTPUT);
+	GPIO_PinWrite(LPC3_GPIO_PORT, LPC3_GPIO_NUM, 0);
 	
 	Sd0& sd0 = Sd0::GetInstance();
 	Sd1& sd1 = Sd1::GetInstance();
@@ -59,7 +59,7 @@ Board::Board() {
 		status_pool_.mpu[static_cast<uint8_t>(Magn::kNum2)] = Status::kFailed;
 }
 
-int32_t Board::SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[512]) {
+int32_t Board::SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[board::SD_PAGE_SIZE]) {
 	assert(num == Sd::kNum1 || num == Sd::kNum2);
 	
 	switch(num) {
@@ -81,7 +81,7 @@ int32_t Board::SdPageWrite(Sd num, uint32_t page_addr, uint8_t page[512]) {
 	}
 }
 
-int32_t Board::SdPageRead(Sd num, uint32_t page_addr, uint8_t page[512]) {
+int32_t Board::SdPageRead(Sd num, uint32_t page_addr, uint8_t page[board::SD_PAGE_SIZE]) {
 	assert(num == Sd::kNum1 || num == Sd::kNum2);
 	
 	switch(num) {
@@ -155,7 +155,7 @@ int32_t Board::MagnRead(Magn num, MagnData& data) {
 			Mpu0& mpu0 = Mpu0::GetInstance();
 			sensor::MPU9250_DATA_t mpu_data = {0};
 			int32_t res = mpu0.Read(&mpu_data);
-			if (res != 0) {
+			if (res != ERROR_CODE_OK) {
 				status_pool_.mpu[static_cast<uint8_t>(Magn::kNum1)] = Status::kFailed;
 				return res;
 			}
@@ -182,7 +182,7 @@ int32_t Board::MagnRead(Magn num, MagnData& data) {
 			Mpu1& mpu1 = Mpu1::GetInstance();
 			sensor::MPU9250_DATA_t mpu_data = {0};
 			int32_t res = mpu1.Read(&mpu_data);
-			if (res != 0) {
+			if (res != ERROR_CODE_OK) {
 				status_pool_.mpu[static_cast<uint8_t>(Magn::kNum1)] = Status::kFailed;
 				return res;
 			}

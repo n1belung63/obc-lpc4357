@@ -109,8 +109,8 @@
 /*----------------------------------------------------------------------------
   Configure external memory controller options
  *----------------------------------------------------------------------------*/
-#define USE_EXT_STAT_MEM_CS0 1          /* Use ext. static  memory with CS0   */
-#define USE_EXT_DYN_MEM_CS0  1          /* Use ext. dynamic memory with CS0   */
+#define USE_EXT_STAT_MEM_CS0 0          /* Use ext. static  memory with CS0   */
+#define USE_EXT_DYN_MEM_CS0  0          /* Use ext. dynamic memory with CS0   */
 
 
 /*----------------------------------------------------------------------------

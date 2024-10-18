@@ -57,18 +57,18 @@ def req_inst():
 
 class Test_SdCard():
     class Support_SdCard:
-        QUATERS_COUNT = 4
+        QUARTERS_COUNT = 4
         PAGE_SIZE = 512
-        PAGE_QUATER_SIZE = 128
+        PAGE_QUARTER_SIZE = 128
 
         def write_page(self, req : Request, sd_num : int, addr : int, inp_buf : List[int], resp_flag : bool) -> bool:
             request_body_write = Config.WriteSdRequest()
             request_body_write.sd_num = sd_num
             request_body_write.addr = addr
-            for q in range(self.QUATERS_COUNT):
+            for q in range(self.QUARTERS_COUNT):
                 request_body_write.quarter = q
                 for i in range(len(request_body_write.data)):
-                    request_body_write.data[i] = inp_buf[self.PAGE_QUATER_SIZE * q + i]
+                    request_body_write.data[i] = inp_buf[self.PAGE_QUARTER_SIZE * q + i]
                 cmd = Config.Commands.WRITE_SD
                 (flag, res) = log(cmd.name)(req.post)(cmd, request_body_write)
                 assert(flag == resp_flag)
@@ -83,7 +83,7 @@ class Test_SdCard():
             request_body_read.sd_num = sd_num
             request_body_read.addr = addr
             out_buf = [0]*self.PAGE_SIZE
-            for q in range(self.QUATERS_COUNT):
+            for q in range(self.QUARTERS_COUNT):
                 request_body_read.quarter = q
                 cmd = Config.Commands.READ_SD
                 (flag, data) = log(cmd.name)(req.get)(cmd, request_body_read)
@@ -93,7 +93,7 @@ class Test_SdCard():
                     return (flag, None)
                 else:
                     for i in range(sizeof(data)):
-                        out_buf[self.PAGE_QUATER_SIZE * q + i] = data.data[i]
+                        out_buf[self.PAGE_QUARTER_SIZE * q + i] = data.data[i]
                     time.sleep(2)
             return (flag, out_buf)
 
