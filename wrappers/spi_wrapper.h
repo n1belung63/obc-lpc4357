@@ -19,9 +19,9 @@ extern volatile void _delay_us(uint32_t delay);
 
 namespace comm {
 	
-template <board::Spi num>
-class Spi : public Singleton<Spi<num>> {
-	friend class Singleton<Spi<num>>;
+template <board::Spi num, uint32_t baudrate>
+class Spi : public Singleton<Spi<num,baudrate>> {
+	friend class Singleton<Spi<num,baudrate>>;
 public:
 	static constexpr int32_t  ERROR_CODE_TRANSFER_INCOMPLETE = (ARM_DRIVER_ERROR_SPECIFIC - 10);
 	static constexpr int32_t  ERROR_CODE_DATA_COUNT_INCORRECT = (ARM_DRIVER_ERROR_SPECIFIC - 11);
@@ -52,8 +52,7 @@ public:
 		return drv_->Control(ARM_SPI_CONTROL_SS, ARM_SPI_SS_INACTIVE);
 	}
 private:
-	static constexpr uint32_t ATTEMPTS_COUNT = 100;
-	static constexpr uint32_t BAUDRATE = 12500000;
+	static constexpr uint32_t ATTEMPTS_COUNT = 1000000;
 
 	const Spi & operator=(const Spi &) = delete;
 	constexpr Spi();
@@ -68,8 +67,8 @@ private:
 	}
 };
 
-template <board::Spi num>
-ARM_DRIVER_SPI* Spi<num>::Resolve() {
+template <board::Spi num, uint32_t baudrate>
+ARM_DRIVER_SPI* Spi<num,baudrate>::Resolve() {
 	#if (RTE_SSP0 == 1)
 	if constexpr (num == board::Spi::kSd) {
 		return &Driver_SPI0;
@@ -78,24 +77,11 @@ ARM_DRIVER_SPI* Spi<num>::Resolve() {
 	return NULL;
 }
 
-template <board::Spi num>
-int32_t Spi<num>::Init() {
+template <board::Spi num, uint32_t baudrate>
+int32_t Spi<num,baudrate>::Init() {
 	assert(drv_!=NULL);
 	
 	int32_t res = 0;
-
-	SCU_PinConfigure(0xE, 7, SCU_CFG_MODE_FUNC4); //PE_7
-	SCU_PinConfigure(0xE, 8, SCU_CFG_MODE_FUNC4); //PE_8	
-	GPIO_PortClock(1);
-	
-	GPIO_SetDir (7, 7, GPIO_DIR_OUTPUT);
-	SlaveSelectDisableGpio(7, 7);
-	
-	GPIO_SetDir (7, 8, GPIO_DIR_OUTPUT);
-	SlaveSelectDisableGpio(7, 8);
-	
-	SCU_PinConfigure(0xF, 0, SCU_CFG_MODE_FUNC1);
-	
 	res = drv_->Initialize(&Callback);
 	if (res != ARM_DRIVER_OK)
 		return res;
@@ -108,7 +94,7 @@ int32_t Spi<num>::Init() {
 											ARM_SPI_MSB_LSB |
 											ARM_SPI_SS_MASTER_UNUSED |
 											ARM_SPI_DATA_BITS(8),
-											BAUDRATE);
+											baudrate);
 	
 	if (res != ARM_DRIVER_OK)
 		return res;
@@ -116,13 +102,13 @@ int32_t Spi<num>::Init() {
 	return ARM_DRIVER_OK;
 }
 
-template <board::Spi num>
-constexpr Spi<num>::Spi() : drv_(Resolve()) {
-	Spi<num>::Init();
+template <board::Spi num, uint32_t baudrate>
+constexpr Spi<num,baudrate>::Spi() : drv_(Resolve()) {
+	Spi<num,baudrate>::Init();
 }
 
-template <board::Spi num>
-int32_t Spi<num>::Transfer(const void *data_out, void *data_in, uint16_t length) {
+template <board::Spi num, uint32_t baudrate>
+int32_t Spi<num,baudrate>::Transfer(const void *data_out, void *data_in, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	int32_t res;
@@ -132,9 +118,8 @@ int32_t Spi<num>::Transfer(const void *data_out, void *data_in, uint16_t length)
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < 1000000)
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
 		__NOP();
-//		_delay_ms(1);
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
 		return ERROR_CODE_TRANSFER_INCOMPLETE;
@@ -147,8 +132,8 @@ int32_t Spi<num>::Transfer(const void *data_out, void *data_in, uint16_t length)
 	return ARM_DRIVER_OK;
 }
 
-template <board::Spi num>
-int32_t Spi<num>::Write(const void *data_out, uint16_t length) {
+template <board::Spi num, uint32_t baudrate>
+int32_t Spi<num,baudrate>::Write(const void *data_out, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	int32_t res;
@@ -159,7 +144,7 @@ int32_t Spi<num>::Write(const void *data_out, uint16_t length) {
 	if (res != ARM_DRIVER_OK)
 		return res;
 
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < 1000000)
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
 		__NOP();
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
@@ -173,8 +158,8 @@ int32_t Spi<num>::Write(const void *data_out, uint16_t length) {
 	return ARM_DRIVER_OK;
 }
 
-template <board::Spi num>
-int32_t Spi<num>::Read(void *data_in, uint16_t length) {
+template <board::Spi num, uint32_t baudrate>
+int32_t Spi<num,baudrate>::Read(void *data_in, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	int32_t res;
@@ -184,9 +169,8 @@ int32_t Spi<num>::Read(void *data_in, uint16_t length) {
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < 1000000)
+	while ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U && ++attempts < ATTEMPTS_COUNT)
 		__NOP();
-//		_delay_ms(1);
 	
 	if ((spi_event_ & ARM_SPI_EVENT_TRANSFER_COMPLETE) == 0U)
 		return ERROR_CODE_TRANSFER_INCOMPLETE;

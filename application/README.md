@@ -50,7 +50,7 @@ private:
 	static constexpr uint32_t SECTOR_OBC_SENSORS_SIZE_ = sizeof(TObcMagnTme);
 	static constexpr uint32_t SECTOR_OBC_SENSORS_MAX_NUM_ = board::SD_PAGE_SIZE / SECTOR_OBC_SENSORS_SIZE_;
 
-	static constexpr std::array<TDataStorageSectorPars, SECTORS_COUNT_> SECTORS_PARS_ = {
+	static constexpr TDataStorageSectorPars SECTORS_PARS_[SECTORS_COUNT_] = {
 		{
 			SECTOR_OBC_SENSORS_RANGE_START_,
 			SECTOR_OBC_SENSORS_RANGE_LENGTH_,
@@ -62,7 +62,7 @@ private:
 public:
 	static constexpr  TDataStorageSectorPars GetSectorPars(uint8_t sector_num) {
 		assert(sector_num < SECTORS_COUNT_);
-		return SECTORS_PARS_.at(sector_num);
+		return SECTORS_PARS_[sector_num];
 	}
     
 	static constexpr uint32_t GetSectorsCount() {

@@ -21,6 +21,8 @@ enum class Commands {
 	BLOCK_SD = 5,
 	UNBLOCK_SD = 6,
 	READ_MPU = 7,
+	READ_TME = 8,
+	READ_TME_BUNCH = 9
 };
 
 typedef struct __attribute__ ((__packed__)) {
@@ -78,5 +80,25 @@ typedef struct __attribute__ ((__packed__)) {
 	int16_t A_Z;
 	uint16_t T;
 } READ_MPU_RESPONSE_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sector_num;
+	uint32_t time;
+} READ_TME_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t data[128];
+} READ_TME_RESPONSE_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t sector_num;
+	uint32_t time;
+	uint32_t step;
+	uint32_t qty;
+} READ_TME_BUNCH_REQUEST_t;
+
+typedef struct __attribute__ ((__packed__)) {
+	uint8_t data[512];
+} READ_TME_BUNCH_RESPONSE_t;
 	
 }

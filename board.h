@@ -36,10 +36,8 @@ public:
 	virtual int32_t SdUnblock(Sd num) override;
 	virtual Status GetMagnStatus(Magn id) override;
 	virtual Status GetSdStatus(Sd id) override;
-
 private:
 	Board();
-	void RiTimerConfig(uint32_t);
 
 	TStatus status_pool_;
 };

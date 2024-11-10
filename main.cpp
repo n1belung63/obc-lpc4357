@@ -17,7 +17,7 @@ using namespace app;
 using namespace allocator;
 
 volatile void _delay_ms(uint32_t delay) {
-	volatile uint32_t cyc = delay * ((SystemCoreClock / 1000) / 6);	// maximum delay is 14.3165 s
+	volatile uint32_t cyc = delay * ((configCPU_CLOCK_HZ / configTICK_RATE_HZ) / 6);	// maximum delay is 14.3165 s
 
 	__asm volatile (
 		"1:        		        \n"
@@ -40,8 +40,8 @@ int main(void) {
 	Board& obc = Board::GetInstance();
 	DataStorage<Board,PoolAllocatorPort,app::DataStorageConfig>& data_storage = DataStorage<Board,PoolAllocatorPort,app::DataStorageConfig>::GetInstance();
 		
-	DataAcquisitionTask<Board> data_acquisition_task;
-	UartTask<Board> uart_task;
+	static DataAcquisitionTask<Board> data_acquisition_task;
+	static UartTask<Board> uart_task;
 	
 	Rtos::CreateTask(data_acquisition_task, "DataAcqTask", TaskPriority::aboveNormal);
 	Rtos::CreateTask(uart_task, "UartTask", TaskPriority::highest);

@@ -13,9 +13,9 @@ extern volatile void _delay_ms(uint32_t delay);
 
 namespace comm {
 
-template <board::I2c num>
-class I2c : public Singleton<I2c<num>> {
-	friend class Singleton<I2c<num>>;
+template <board::I2c num, uint32_t baudrate>
+class I2c : public Singleton<I2c<num, baudrate>> {
+	friend class Singleton<I2c<num, baudrate>>;
 public:
 	static constexpr int32_t ERROR_CODE_OK = 0;
 	static constexpr int32_t  ERROR_CODE_TRANSFER_INCOMPLETE = (ARM_DRIVER_ERROR_SPECIFIC - 10);
@@ -25,7 +25,12 @@ public:
 	int32_t Write(const uint8_t addr, uint8_t* data, uint16_t length);
 	int32_t Read(const uint8_t addr, uint8_t* data, uint16_t length);
 private:
-	static constexpr uint32_t ATTEMPTS_COUNT = 100;
+	static constexpr uint32_t ATTEMPTS_COUNT = 1000000;
+
+	static constexpr uint32_t BUS_SPEED_STANDARD = 100000;
+	static constexpr uint32_t BUS_SPEED_FAST = 400000;
+	static constexpr uint32_t BUS_SPEED_FAST_PLUS = 1000000;
+	static constexpr uint32_t BUS_SPEED_HIGH = 3400000;
 
 	const I2c & operator=(const I2c &) = delete;
 	I2c();
@@ -40,8 +45,8 @@ private:
 	}
 };
 
-template <board::I2c num>
-ARM_DRIVER_I2C* I2c<num>::Resolve() {
+template <board::I2c num, uint32_t baudrate>
+ARM_DRIVER_I2C* I2c<num, baudrate>::Resolve() {
 	#if (RTE_I2C0 == 1)
 	if constexpr (num == board::I2c::kInt) {
 		return &Driver_I2C0;
@@ -55,15 +60,16 @@ ARM_DRIVER_I2C* I2c<num>::Resolve() {
 	return NULL;
 }
 
-template <board::I2c num>
-I2c<num>::I2c() : drv_(Resolve()) {
+template <board::I2c num, uint32_t baudrate>
+I2c<num, baudrate>::I2c() : drv_(Resolve()) {
 	Init();
 }
 
-template <board::I2c num>
-int32_t I2c<num>::Init() {
+template <board::I2c num, uint32_t baudrate>
+int32_t I2c<num, baudrate>::Init() {
 	assert(drv_!=NULL);
-	
+	static_assert(baudrate == BUS_SPEED_STANDARD | baudrate == BUS_SPEED_FAST | baudrate == BUS_SPEED_FAST_PLUS | baudrate == BUS_SPEED_HIGH);
+
 	int32_t res = 0;
 
 	res = drv_->Initialize(&Callback);
@@ -74,15 +80,31 @@ int32_t I2c<num>::Init() {
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
-	res = drv_->Control(ARM_I2C_BUS_SPEED, ARM_I2C_BUS_SPEED_FAST);
+	uint32_t speed_mode;
+	switch(baudrate) {
+		case BUS_SPEED_STANDARD: 
+			speed_mode = ARM_I2C_BUS_SPEED_STANDARD;
+			break;
+		case BUS_SPEED_FAST: 
+			speed_mode = ARM_I2C_BUS_SPEED_FAST; 
+			break;
+		case BUS_SPEED_FAST_PLUS: 
+			speed_mode = ARM_I2C_BUS_SPEED_FAST_PLUS; 
+			break;
+		case BUS_SPEED_HIGH: 
+			speed_mode = ARM_I2C_BUS_SPEED_HIGH; 
+			break;
+	}
+	
+	res = drv_->Control(ARM_I2C_BUS_SPEED, speed_mode);
 	if (res != ARM_DRIVER_OK)
 		return res;
 		
 	return ARM_DRIVER_OK;
 }
 
-template <board::I2c num>
-int32_t I2c<num>::Clear() {
+template <board::I2c num, uint32_t baudrate>
+int32_t I2c<num, baudrate>::Clear() {
 	assert(drv_!=NULL);
 	
 	int32_t res = 0;
@@ -94,8 +116,8 @@ int32_t I2c<num>::Clear() {
 	return ARM_DRIVER_OK;
 }
 
-template <board::I2c num>
-int32_t I2c<num>::Write(const uint8_t addr, uint8_t* data, uint16_t length) {
+template <board::I2c num, uint32_t baudrate>
+int32_t I2c<num, baudrate>::Write(const uint8_t addr, uint8_t* data, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	int32_t res = 0;
@@ -108,7 +130,7 @@ int32_t I2c<num>::Write(const uint8_t addr, uint8_t* data, uint16_t length) {
 		return res;
 			
 	while ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_DONE) == 0U && ++attempts < ATTEMPTS_COUNT)
-		_delay_ms(1);
+		__NOP();
 		
 	if ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_INCOMPLETE) != 0U)
 		return ERROR_CODE_TRANSFER_INCOMPLETE;
@@ -121,8 +143,8 @@ int32_t I2c<num>::Write(const uint8_t addr, uint8_t* data, uint16_t length) {
 	return ARM_DRIVER_OK;
 }
 
-template <board::I2c num>
-int32_t I2c<num>::Read(const uint8_t addr, uint8_t* data, uint16_t length) {
+template <board::I2c num, uint32_t baudrate>
+int32_t I2c<num, baudrate>::Read(const uint8_t addr, uint8_t* data, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	int32_t res = 0;
@@ -135,7 +157,7 @@ int32_t I2c<num>::Read(const uint8_t addr, uint8_t* data, uint16_t length) {
 		return res;
 	
 	while ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_DONE) == 0U && ++attempts < ATTEMPTS_COUNT)
-		_delay_ms(1);
+		__NOP();
 	
 	if ((i2c_event_ & ARM_I2C_EVENT_TRANSFER_INCOMPLETE) != 0U)
 		return ERROR_CODE_TRANSFER_INCOMPLETE;

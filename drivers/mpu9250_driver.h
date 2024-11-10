@@ -100,7 +100,7 @@ private:
 	}
 
 	uint8_t addr_;
-	using IntI2C = comm::I2c<board::I2c::kInt>;
+	using IntI2C = comm::I2c<board::I2c::kInt, board::I2C_INT_SPEED>;
 	IntI2C& i2c_;
 	int32_t err_code_;	
 };

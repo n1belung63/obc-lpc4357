@@ -41,7 +41,9 @@ public:
 	};
 
 private:
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
 	tTaskContext context;
+#endif
 	tTaskHandle handle =  nullptr;
 
 	tTime lastWakeTime = 0U;
@@ -57,6 +59,8 @@ class Task: public ITask {
 	friend class Rtos;  
 
 	static constexpr std::size_t stackDepth = stackSize;
+#if (configSUPPORT_STATIC_ALLOCATION == 1)
 	std::array <tStack, stackSize> stack;
+#endif
 };
 };

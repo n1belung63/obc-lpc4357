@@ -15,11 +15,12 @@
 namespace wrtos {
 using namespace std::chrono_literals;
 	
-extern "C" void vPortSVCHandler(void);
-extern "C" void xPortPendSVHandler(void);
-extern "C" void xPortSysTickHandler(void);
-extern "C" void xPortRITimerHandler(void);
-	
+extern "C" {
+	void vPortSVCHandler(void);
+	void xPortPendSVHandler(void);
+	void xPortSysTickHandler(void);
+	void xPortRITimerHandler(void);
+}
 
 enum class TaskPriority : std::uint8_t {
 		clear = 0,

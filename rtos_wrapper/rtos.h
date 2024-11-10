@@ -11,11 +11,9 @@
 
 namespace wrtos {
 using namespace std::chrono_literals;
-	
-static uint32_t scheduler_time = 0;
-	
+		
 class Rtos {
-	friend class RtosWrapper;    
+	friend class RtosWrapper;		
 public:
 	template<typename Task>
 	inline static void CreateTask(
@@ -23,7 +21,7 @@ public:
 		const char *pName, 
 		TaskPriority prior = TaskPriority::normal
 	) {
-		return RtosWrapper::CreateTask<Rtos>(task, pName, prior, task.stackDepth, task.stack.data());
+		return RtosWrapper::wCreateTask<Rtos>(task, pName, prior, task.stackDepth);
 	}
 
 	inline static void Start() {
@@ -38,28 +36,37 @@ public:
 		RtosWrapper::wLeaveCriticalSection();
 	}
 	
-	void static HandleRiTimerInterrupt() {
-		if (xTaskGetTickCountFromISR() % 250 == 0) {
-			scheduler_time++;
-		}
+	inline static uint32_t GetCurrentTick() {
+		return RtosWrapper::wGetTicks();
+	}
+	
+	inline static void IterrateCycleCount() {
+		cycle_count_++;
+	}
+	
+	inline static uint32_t GetCycleCount() {
+		return cycle_count_;
+	}
+	
+	inline static void IterrateSchedulerTime() {
+		scheduler_time_++;
 	}
 	
 	inline static uint32_t GetSchedulerTime() {
-		return scheduler_time;
+		return scheduler_time_;
 	}
 	
-	inline static uint32_t GetCurrentTick() {
-		return RtosWrapper::wGetTicks();
+	inline static void SetSchedulerTime(uint32_t time) {
+		scheduler_time_ = time;
 	}
 
 private:
 	inline static void Run(void *pContext) {
 		static_cast<ITask*>(pContext)->Run();
 	}
+
+	static uint32_t cycle_count_;;
+	static uint32_t scheduler_time_;
 };
-	
-extern "C" {
-	void xPortRITimerHandler(void);
-}
 
 };

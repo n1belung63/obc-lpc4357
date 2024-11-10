@@ -14,7 +14,7 @@ using namespace std::chrono_literals;
 using namespace wrtos;
 
 template <typename TBoard>
-class DataAcquisitionTask : public wrtos::Task<static_cast<std::size_t>(wrtos::StackDepth::minimal)> {
+class DataAcquisitionTask : public wrtos::Task<static_cast<std::size_t>(wrtos::StackDepth::medium)> {
 public:
 	DataAcquisitionTask();
 	virtual void Execute() override;
@@ -30,11 +30,12 @@ void DataAcquisitionTask<TBoard>::Execute() {
 	TBoard& obc = TBoard::GetInstance();
 	app::DataStorage<TBoard,PoolAllocatorPort,app::DataStorageConfig>& data_storage = app::DataStorage<TBoard,PoolAllocatorPort,app::DataStorageConfig>::GetInstance();
 		
-	app::TObcMagnTme tme = {0};
-	// app::TObcMagnTme* tme = static_cast<app::TObcMagnTme*>(allocator_.allocate(sizeof(app::TObcMagnTme)));
+	static app::TObcMagnTme tme = {0};
+	static uint8_t num;
+	static const std::chrono::milliseconds wait_time = std::chrono::milliseconds(configDATA_ACQUISITION_PERIOD_MS);
 
 	while(true) {
-		for ( uint8_t num = 0; num < board::MAGN_COUNT; ++num ) {
+		for ( num = 0; num < board::MAGN_COUNT; ++num ) {
 			if ( obc.GetMagnStatus(static_cast<board::Magn>(num)) == board::Status::kWorked ) {
 				if ( obc.MagnRead(static_cast<board::Magn>(num), tme.sensors[num]) != board::ERROR_CODE_OK ) {
 					memset(&tme.sensors[num], 0, sizeof(tme.sensors[num]));
@@ -48,6 +49,7 @@ void DataAcquisitionTask<TBoard>::Execute() {
 		if ( obc.GetSdStatus(board::Sd::kNum2) == board::Status::kWorked ) {
 			data_storage.template AddTmeToSd<board::Sd::kNum2,Sector::ObcSensors>(reinterpret_cast<uint8_t*>(&tme));
 		}
-		SleepUntil(250ms);
+		
+		SleepUntil(wait_time);
 	}
 }

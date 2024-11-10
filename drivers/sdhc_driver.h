@@ -21,8 +21,8 @@ typedef struct {
 enum class SdResponse { R1, R1b, R2, R3, R7 };
 
 inline static SD_t sd_arr[board::SD_COUNT] = {
-	{ .sd_i = board::SD1_NUM, .sd_ss_port = board::SD1_PORT, .sd_ss_pin = board::SD1_PIN },
-	{ .sd_i = board::SD2_NUM, .sd_ss_port = board::SD2_PORT, .sd_ss_pin = board::SD2_PIN }
+	{ .sd_i = board::SD1_NUM, .sd_ss_port = board::SD1_GPIO_PORT, .sd_ss_pin = board::SD1_GPIO_PIN },
+	{ .sd_i = board::SD2_NUM, .sd_ss_port = board::SD2_GPIO_PORT, .sd_ss_pin = board::SD2_GPIO_PIN }
 };
 	
 template <board::Sd num>
@@ -135,7 +135,7 @@ private:
 	int32_t ReadResponse(SdResponse format, uint8_t *resp);
 	
 	SD_t* sd_;
-	using Spi = comm::Spi<board::Spi::kSd>;	
+	using Spi = comm::Spi<board::Spi::kSd, board::SPI_SD_BAUDRATE>;	
 	Spi& spi_;
 	int32_t err_code_ = ERROR_CODE_OK;
 };

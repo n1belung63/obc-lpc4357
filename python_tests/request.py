@@ -41,7 +41,7 @@ class CDataJSONEncoder(JSONEncoder):
             return obj
 
         if isinstance(obj, (Structure, Union)):
-            result = {}
+            result : dict = {}
             anonymous = getattr(obj, '_anonymous_', [])
 
             for key, *_ in getattr(obj, '_fields_', []):
@@ -95,10 +95,9 @@ class Request():
 
 
     def post(self, command : Config.Commands, request_data = None, req_size : int = None):
+        data = bytes([command.value])
         if request_data != None:
-            data = bytes([command.value]) + self.__request_data_to_bytes__(request_data, req_size)
-        else:
-            data = bytes([command.value])
+            data += self.__request_data_to_bytes__(request_data, req_size)
 
         res = self.serial.write_read(data, 1)
 
@@ -115,16 +114,12 @@ class Request():
 
     
     def get(self, command : Config.Commands, request_data = None, req_size : int = None, resp_size : int = None) -> Any:      
+        data = bytes([command.value])
         if request_data != None:
-            data = bytes([command.value]) + self.__request_data_to_bytes__(request_data, req_size)
-        else:
-            data = bytes([command.value])
+            data += self.__request_data_to_bytes__(request_data, req_size)
 
         resp_type = self.__get_response_type__(command)
         resp_inst = resp_type()
-
-        if resp_size is None:
-            resp_size = self.__get_body_size__(resp_type)
 
         res = self.serial.write_read(data, 1)
 
@@ -135,10 +130,12 @@ class Request():
                 data = self.serial.read(self.ERR_SIZE)
                 err_inst = c_int(0)
                 memmove(pointer(err_inst), data, self.ERR_SIZE)
-                raise Exception(f'No response, error is {err_inst.value}')
+                raise Exception(f'No response, error is {hex(err_inst.value)}')
             elif res[0] == self.ERR:
                 raise Exception('Wrong parameters')
             elif res[0] == self.ACK:
+                if resp_size is None:
+                    resp_size = self.__get_body_size__(resp_type)
                 res = self.serial.read(resp_size)
                 memmove(pointer(resp_inst), res, resp_size)
                 return resp_inst

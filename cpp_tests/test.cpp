@@ -370,6 +370,35 @@ TEST_F(DataStorageMagnTest, ReadMagnTmeByTime) {
     } 
 }
 
+TEST_F(DataStorageMagnTest, ReadMagnTmeByTimeV2) {
+    using Sector = DataStorageConfig::Sector;
+    int32_t res;
+    const uint32_t time_stamp_to_read_tme = 16;
+    const uint32_t page_to_clear = 1;
+    TObcMagnTme data = {0};
+
+    if ( obc_.GetSdStatus(Sd::kNum1) == Status::kWorked ) {
+        SdPageClear(Sd::kNum1, page_to_clear);
+
+        res = data_storage_.template InitSector<Sd::kNum1,Sector::ObcSensors>();
+        EXPECT_EQ(res, data_storage_.ERROR_CODE_OK);
+
+        res = data_storage_.template ReadTmeByTime<Sd::kNum1>(static_cast<uint8_t>(Sector::ObcSensors), time_stamp_to_read_tme, reinterpret_cast<uint8_t*>(&data));
+        EXPECT_EQ(res, data_storage_.ERROR_CODE_OK);
+        EXPECT_EQ(time_stamp_to_read_tme, data.time);
+    }
+    if ( obc_.GetSdStatus(Sd::kNum2) == Status::kWorked ) {
+        SdPageClear(Sd::kNum2, page_to_clear);
+
+        res = data_storage_.template InitSector<Sd::kNum2,Sector::ObcSensors>();
+        EXPECT_EQ(res, data_storage_.ERROR_CODE_OK);
+
+        res = data_storage_.template ReadTmeByTime<Sd::kNum2>(static_cast<uint8_t>(Sector::ObcSensors), time_stamp_to_read_tme, reinterpret_cast<uint8_t*>(&data));
+        EXPECT_EQ(res, data_storage_.ERROR_CODE_OK);
+        EXPECT_EQ(time_stamp_to_read_tme, data.time);
+    } 
+}
+
 TEST_F(DataStorageMagnTest, ReadMagnTmeByTimeGreateThenNewestTimeError) {
     using Sector = DataStorageConfig::Sector;
     int32_t res;

@@ -5,41 +5,44 @@ import inspect
 
 from config import Config 
 from request import *
+from parser import Parser, parse
 
 from typing import List
 
 if not os.path.exists("logs"):
     os.makedirs("logs")
 
-with open(
-    os.path.join(os.path.dirname(__file__), "logging_config.yaml"), "rt"
-) as f:
+with open(os.path.join(os.path.dirname(__file__), "logging_config.yaml"), "rt") as f:
     config = yaml.safe_load(f.read())
 
 logging.config.dictConfig(config)
 logger = logging.getLogger(__name__)
+parser = Parser()
 
 def log(cmd_name : str):
-        def inner(func):
-            logger.info(f"[CMD] - {cmd_name}")
+    def inner(func):
+        logger.info(f"[CMD] - {cmd_name}")
 
-            def try_func(*args, **kwargs):
-                try:
-                    logger.info(f"[INP] - {json.dumps(args[1], cls=CDataJSONEncoder)}")
-                    data = func(*args, **kwargs) 
-                    if data is not None:
-                        logger.info(f"[OUT] - {json.dumps(data, cls=CDataJSONEncoder)}")
-                        return (True, data)
-                    else:
-                        logger.info(f"[OUT] - Ok")
-                        return (True, None)
+        def try_func(*args, **kwargs):
+            try:
+                logger.info(f"[INP] - {json.dumps(args[1], cls=CDataJSONEncoder)}")
 
-                except Exception as err:
-                    logger.warning(f"[ERR] - {err}")
-                    return (False, None)        
+                data = func(*args, **kwargs) 
+                if data is not None:
+                    if args[0] in parser.need_parse.keys():
+                        data = parse( data, parser.need_parse[ args[0] ](args[1]) )
+                    logger.info(f"[OUT] - {json.dumps(data, cls=CDataJSONEncoder)}")
+                    return (True, data)
+                else:
+                    logger.info(f"[OUT] - Ok")
+                    return (True, None)
 
-            return try_func
-        return inner
+            except Exception as err:
+                logger.warning(f"[ERR] - {err}")
+                return (False, None)        
+
+        return try_func
+    return inner
 
 def get_test_name(cls):
     func_name = inspect.getouterframes( inspect.currentframe() )[1][3]
@@ -101,7 +104,6 @@ class Test_SdCard():
         self.sup : Test_SdCard.Support_SdCard = self.Support_SdCard()
 
     SD0, SD1 = 0, 1
-
     test_data = [(SD0, False),(SD1, True)]
 
     @pytest.mark.parametrize("sd_num,resp_flag", test_data)
@@ -298,6 +300,44 @@ class Test_Sensor():
         assert(flag == resp_flag)
         if not flag:
             assert(res == None)
+
+        logger.info(f"[RES] - PASSED\n")
+
+        pass
+
+
+class Test_ReadData():
+    def test_read_tme_by_time(self, req_inst : Request):
+        test_name = get_test_name(self)
+        logger.info(f"[TST] - {test_name}")
+        cmd = Config.Commands.READ_TME
+
+        request_body = Config.ReadTmeRequest()
+        request_body.sector_num = 0
+        request_body.time = 5
+
+        (flag, res) = log(cmd.name)(req_inst.get)(cmd, request_body, None, 44)
+
+        assert(flag == True)
+
+        logger.info(f"[RES] - PASSED\n")
+
+        pass
+
+    def test_read_tme_bunch(self, req_inst : Request):
+        test_name = get_test_name(self)
+        logger.info(f"[TST] - {test_name}")
+        cmd = Config.Commands.READ_TME_BUNCH
+
+        request_body = Config.ReadTmeBunchRequest()
+        request_body.sector_num = 0
+        request_body.time = 5
+        request_body.step = 3
+        request_body.qty = 10
+
+        (flag, res) = log(cmd.name)(req_inst.get)(cmd, request_body, None, 44*10)
+
+        assert(flag == True)
 
         logger.info(f"[RES] - PASSED\n")
 

@@ -9,8 +9,8 @@
 namespace wrtos {
 class Semaphore {
 public:
-	static tSemaphoreHandle & GetInstance() {
-		static tSemaphoreHandle handle = RtosWrapper::wCreateSemaphore();
+	static tSemaphoreHandle& GetInstance() {
+		static tSemaphoreHandle handle = RtosWrapper::wCreateSemaphore(mutex_);
 		return handle;
 	}
 	
@@ -21,5 +21,7 @@ public:
 	static bool Give() {
 		return RtosWrapper::wGiveSemaphore(Semaphore::GetInstance());
 	}
+private:
+	static tMutex mutex_;
 };
 }

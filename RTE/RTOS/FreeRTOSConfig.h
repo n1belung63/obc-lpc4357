@@ -50,35 +50,36 @@ extern uint32_t SystemCoreClock;
 /* Constants that describe the hardware and memory usage. */
 #define configCPU_CLOCK_HZ                    (SystemCoreClock)
 #define configTICK_RATE_HZ                    ((TickType_t)1000)
-//#define configTOTAL_HEAP_SIZE                 ((size_t)8192)
-#define configTOTAL_HEAP_SIZE                 ((size_t)2048)
-//#define configMINIMAL_STACK_SIZE              ((uint16_t)512)
-#define configMINIMAL_STACK_SIZE              ((uint16_t)128)
+#define configTOTAL_HEAP_SIZE                 ((size_t)(8 * 1024))
+#define configMINIMAL_STACK_SIZE              ((uint16_t) 128)
 #define configSUPPORT_DYNAMIC_ALLOCATION      1
 #define configSUPPORT_STATIC_ALLOCATION       0
 
+#define configDATA_ACQUISITION_RATE_HZ				4
+#define configDATA_ACQUISITION_PERIOD_MS			((uint16_t)(configTICK_RATE_HZ / configDATA_ACQUISITION_RATE_HZ))
+
 /* Constants related to the behaviour or the scheduler. */
 #define configMAX_PRIORITIES                  6
-#define configUSE_PREEMPTION                  1
+#define configUSE_PREEMPTION                  0
 #define configUSE_TIME_SLICING                1
 #define configIDLE_SHOULD_YIELD               1
 #define configMAX_TASK_NAME_LEN               (15)
 #define configUSE_16_BIT_TICKS                0
 
 /* Software timer definitions. */
-#define configUSE_TIMERS                      0
+#define configUSE_TIMERS                      1
 #define configTIMER_TASK_PRIORITY             2
-#define configTIMER_QUEUE_LENGTH              5
+#define configTIMER_QUEUE_LENGTH              10
 #define configTIMER_TASK_STACK_DEPTH          (configMINIMAL_STACK_SIZE * 2)
 
 /* Constants that build features in or out. */
 #define configUSE_MUTEXES                     1
-#define configUSE_RECURSIVE_MUTEXES           1
-#define configUSE_COUNTING_SEMAPHORES         1
-#define configUSE_QUEUE_SETS                  1
-#define configUSE_TASK_NOTIFICATIONS          1
-#define configUSE_TRACE_FACILITY              1
-#define configUSE_TICKLESS_IDLE               1
+#define configUSE_RECURSIVE_MUTEXES           0
+#define configUSE_COUNTING_SEMAPHORES         0
+#define configUSE_QUEUE_SETS                  0
+#define configUSE_TASK_NOTIFICATIONS          0
+#define configUSE_TRACE_FACILITY              0
+#define configUSE_TICKLESS_IDLE               0
 #define configUSE_APPLICATION_TASK_TAG        0
 #define configUSE_NEWLIB_REENTRANT            0
 #define configUSE_CO_ROUTINES                 0
@@ -89,7 +90,7 @@ extern uint32_t SystemCoreClock;
 #define configASSERT( x )                     if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); for( ;; ); }
 
 /* Constants that define which hook (callback) functions should be used. */
-#define configUSE_IDLE_HOOK                   0
+#define configUSE_IDLE_HOOK                   1
 #define configUSE_TICK_HOOK                   0
 #define configUSE_DAEMON_TASK_STARTUP_HOOK    0
 #define configUSE_MALLOC_FAILED_HOOK          0
@@ -111,7 +112,7 @@ extern uint32_t SystemCoreClock;
 #endif
 
 /* The lowest interrupt priority that can be used in a call to a "set priority" function. */
-#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY       0x07
+#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY       0x0f
 
 /* The highest interrupt priority that can be used by any interrupt service
  * routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT
@@ -131,30 +132,29 @@ extern uint32_t SystemCoreClock;
  * to exclude the API function.  NOTE:  Setting an INCLUDE_ parameter to 0 is
  * only necessary if the linker does not automatically remove functions that are
  * not referenced anyway. */
-#define INCLUDE_vTaskPrioritySet              1
-#define INCLUDE_uxTaskPriorityGet             1
-#define INCLUDE_vTaskDelete                   1
+#define INCLUDE_vTaskPrioritySet              0
+#define INCLUDE_uxTaskPriorityGet             0
+#define INCLUDE_vTaskDelete                   0
 #define INCLUDE_vTaskSuspend                  1
 #define INCLUDE_vTaskDelayUntil               1
 #define INCLUDE_vTaskDelay                    1
-#define INCLUDE_xTaskGetIdleTaskHandle        1
-#define INCLUDE_xTaskAbortDelay               1
-#define INCLUDE_xQueueGetMutexHolder          1
-#define INCLUDE_xSemaphoreGetMutexHolder      1
-#define INCLUDE_xTaskGetHandle                1
+#define INCLUDE_xTaskGetIdleTaskHandle        0
+#define INCLUDE_xTaskAbortDelay               0
+#define INCLUDE_xQueueGetMutexHolder          0
+#define INCLUDE_xSemaphoreGetMutexHolder      0
+#define INCLUDE_xTaskGetHandle                0
 #define INCLUDE_uxTaskGetStackHighWaterMark   1
 #define INCLUDE_uxTaskGetStackHighWaterMark2  1
-#define INCLUDE_eTaskGetState                 1
+#define INCLUDE_eTaskGetState                 0
 #define INCLUDE_xTaskResumeFromISR            1
 #define INCLUDE_xTimerPendFunctionCall        1
-#define INCLUDE_xTaskGetSchedulerState        1
-#define INCLUDE_xTaskGetCurrentTaskHandle     1
+#define INCLUDE_xTaskGetSchedulerState        0
+#define INCLUDE_xTaskGetCurrentTaskHandle     0
 
 /* Map the FreeRTOS port interrupt handlers to their CMSIS standard names. */
 #define xPortPendSVHandler                    PendSV_Handler
 #define vPortSVCHandler                       SVC_Handler
 #define xPortSysTickHandler                   SysTick_Handler
-#define xPortRITimerHandler										RITIMER_IRQHandler
 
 #if (defined(__ARMCC_VERSION) || defined(__GNUC__) || defined(__ICCARM__))
 /* Include debug event definitions */

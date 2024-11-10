@@ -7,9 +7,9 @@
 using namespace comm;
 using namespace board;
 
-using UartDebug = comm::Uart<board::Uart::kDebug>;
-using IntI2C = comm::I2c<board::I2c::kInt>;
-using SpiSd = comm::Spi<board::Spi::kSd>;
+using UartDebug = comm::Uart<board::Uart::kDebug, board::UART_DEBUG_BAUDRATE>;
+using IntI2C = comm::I2c<board::I2c::kInt, board::I2C_INT_SPEED>;
+using SpiSd = comm::Spi<board::Spi::kSd, board::SPI_SD_BAUDRATE>;
 
 using Mpu0 = sensor::Mpu9250<board::MpuAddr::A0>;
 using Mpu1 = sensor::Mpu9250<board::MpuAddr::A1>;
@@ -21,7 +21,16 @@ extern volatile void _delay_ms(uint32_t delay);
 
 Board::Board() {
 	SystemCoreClockUpdate();
-	RiTimerConfig((uint32_t)(SystemCoreClock / 1000));
+	
+	/* SD1 and SD2 Slave Select setup */
+	SCU_PinConfigure(SD1_PORT, SD1_PIN, SCU_CFG_MODE_FUNC4);
+	SCU_PinConfigure(SD2_PORT, SD2_PIN, SCU_CFG_MODE_FUNC4);
+	GPIO_PortClock(1);
+	GPIO_SetDir(SD1_GPIO_PORT, SD1_GPIO_PIN, GPIO_DIR_OUTPUT);
+	GPIO_PinWrite(SD1_GPIO_PORT, SD1_GPIO_PIN, 1);
+	GPIO_SetDir(SD2_GPIO_PORT, SD2_GPIO_PIN, GPIO_DIR_OUTPUT);
+	GPIO_PinWrite(SD2_GPIO_PORT, SD2_GPIO_PIN, 1);
+	SCU_PinConfigure(RTE_SSP0_SCK_PORT, RTE_SSP0_SCK_BIT, SCU_CFG_MODE_FUNC1);
 	
 	UartDebug& debug = UartDebug::GetInstance();
 	IntI2C& i2c = IntI2C::GetInstance();
@@ -30,7 +39,7 @@ Board::Board() {
 	Pca& pca = Pca::GetInstance();
 	
 	if (pca.GetLastErrorCode() != pca.ERROR_CODE_OK) {
-		//todo: perform error
+		__NOP(); //todo: perform error
 	}
 		
 	pca.PinReset(static_cast<uint8_t>(board::PcaPin::kMpu0));
@@ -40,9 +49,10 @@ Board::Board() {
 			
 	_delay_ms(25);
 	
-	SCU_PinConfigure(LPC3_PORT, LPC3_PIN, SCU_CFG_MODE_FUNC0);	/* EN LPC3 - SD and SPIF */
-	GPIO_SetDir (LPC3_GPIO_PORT, LPC3_GPIO_NUM, GPIO_DIR_OUTPUT);
-	GPIO_PinWrite(LPC3_GPIO_PORT, LPC3_GPIO_NUM, 0);
+	/* EN LPC3 - SD and SPIF */
+	SCU_PinConfigure(LPC3_PORT, LPC3_PIN, SCU_CFG_MODE_FUNC0);
+	GPIO_SetDir(LPC3_GPIO_PORT, LPC3_GPIO_PIN, GPIO_DIR_OUTPUT);
+	GPIO_PinWrite(LPC3_GPIO_PORT, LPC3_GPIO_PIN, 0);
 	
 	Sd0& sd0 = Sd0::GetInstance();
 	Sd1& sd1 = Sd1::GetInstance();
@@ -210,14 +220,4 @@ Status Board::GetMagnStatus(Magn num) {
 Status Board::GetSdStatus(Sd num) {
 	assert(num == Sd::kNum1 || num == Sd::kNum2);
 	return status_pool_.sd[static_cast<uint8_t>(num)];
-}
-
-void Board::RiTimerConfig(uint32_t ticks) {
-	LPC_RITIMER->COMPVAL = ticks-1;	
-	NVIC_SetPriority (RITIMER_IRQn, (1UL << __NVIC_PRIO_BITS) - 1UL);
-	LPC_RITIMER->MASK = 0;
-	LPC_RITIMER->COUNTER = 0;
-	LPC_RITIMER->CTRL    = (1 << 3) | (1 << 2) | (1 << 1);
-	
-	NVIC_EnableIRQ (RITIMER_IRQn);
 }

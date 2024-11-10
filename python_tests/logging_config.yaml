@@ -30,7 +30,7 @@ handlers:
     class: logging_services.LogRotatiingFileHandler
     formatter: default_formatter
     level: INFO
-    filename: Logs/test_drivers_info.log
+    filename: logs/test_drivers_info.log
     when: midnight
     utc: False
     backupCount: 365
@@ -40,7 +40,7 @@ handlers:
     class: logging_services.LogRotatiingFileHandler
     formatter: default_formatter
     level: WARNING
-    filename: Logs/test_drivers_info.log
+    filename: logs/test_drivers_info.log
     when: midnight
     utc: False
     backupCount: 365

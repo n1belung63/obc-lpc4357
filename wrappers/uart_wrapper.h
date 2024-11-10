@@ -46,9 +46,9 @@ private:
 	char buf_[buf_size] = {0};
 };
 
-template <board::Uart num>
-class Uart : public Singleton<Uart<num>> {
-	friend class Singleton<Uart<num>>;
+template <board::Uart num, uint32_t baudrate>
+class Uart : public Singleton<Uart<num,baudrate>> {
+	friend class Singleton<Uart<num,baudrate>>;
 public:
 	int32_t Write(const void *data, uint16_t length);
 	int32_t Read(void *data, uint16_t length);
@@ -57,7 +57,6 @@ public:
 
 	UartBuffer buf;
 private:
-	static constexpr uint32_t BAUDRATE = 115200;
 	static constexpr uint32_t ATTEMPTS_COUNT = 10000;
 
 	const Uart & operator=(const Uart &) = delete;
@@ -74,16 +73,16 @@ private:
 	}
 };
 
-template<typename Type, board::Uart num>
-Uart<num> & operator << (Uart<num> &out, const Type& in) {
+template<typename Type, board::Uart num, uint32_t baudrate>
+Uart<num,baudrate> & operator << (Uart<num,baudrate> &out, const Type& in) {
 	out.buf.set_to_buf(in);
 	out.Write(static_cast<void*>(out.buf.GetAddress()), out.buf.StrLen());		
 		
   return out;
 }
 
-template <board::Uart num>
-ARM_DRIVER_USART* Uart<num>::Resolve() {
+template <board::Uart num, uint32_t baudrate>
+ARM_DRIVER_USART* Uart<num,baudrate>::Resolve() {
 	#if (RTE_USART3 == 1)
 	if constexpr (num == board::Uart::kDebug) {
 		return &Driver_USART3;
@@ -92,8 +91,8 @@ ARM_DRIVER_USART* Uart<num>::Resolve() {
 	return NULL;
 }
 
-template <board::Uart num>
-LPC_USARTn_Type* Uart<num>::ResolveType() {
+template <board::Uart num, uint32_t baudrate>
+LPC_USARTn_Type* Uart<num,baudrate>::ResolveType() {
 	#if (RTE_USART3 == 1)
 	if constexpr (num == board::Uart::kDebug) {
 		return LPC_USART3;
@@ -102,8 +101,8 @@ LPC_USARTn_Type* Uart<num>::ResolveType() {
 	return NULL;
 }
 
-template <board::Uart num>
-int32_t Uart<num>::Init() {
+template <board::Uart num, uint32_t baudrate>
+int32_t Uart<num,baudrate>::Init() {
 	assert(drv_!=NULL);
 	
 	int32_t res = 0;
@@ -121,7 +120,7 @@ int32_t Uart<num>::Init() {
 													ARM_USART_PARITY_NONE |
 													ARM_USART_STOP_BITS_1 |
 													ARM_USART_FLOW_CONTROL_NONE,
-													BAUDRATE);
+													baudrate);
 	if (res != ARM_DRIVER_OK)
 		return res;
 	
@@ -136,13 +135,13 @@ int32_t Uart<num>::Init() {
 	return ARM_DRIVER_OK;
 }
 
-template <board::Uart num>
-Uart<num>::Uart() : drv_(Resolve()) {
-	Uart<num>::Init();
+template <board::Uart num, uint32_t baudrate>
+Uart<num,baudrate>::Uart() : drv_(Resolve()) {
+	Uart<num,baudrate>::Init();
 }
 
-template <board::Uart num>
-int32_t Uart<num>::Write(const void *data_out, uint16_t length) {
+template <board::Uart num, uint32_t baudrate>
+int32_t Uart<num,baudrate>::Write(const void *data_out, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	uint32_t attempts=0;
@@ -162,13 +161,13 @@ int32_t Uart<num>::Write(const void *data_out, uint16_t length) {
 	return ARM_DRIVER_OK;
 }
 
-template <board::Uart num>
-int32_t Uart<num>::WriteByte(const char inp) {	
-	return Write((char[1]){inp}, 1);
+template <board::Uart num, uint32_t baudrate>
+int32_t Uart<num,baudrate>::WriteByte(const char inp) {	
+	return Write(&inp, 1);
 }
 
-template <board::Uart num>
-int32_t Uart<num>::Read(void *data_in, uint16_t length) {
+template <board::Uart num, uint32_t baudrate>
+int32_t Uart<num,baudrate>::Read(void *data_in, uint16_t length) {
 	assert(drv_!=NULL);
 	
 	uint32_t attempts=0;
@@ -188,8 +187,8 @@ int32_t Uart<num>::Read(void *data_in, uint16_t length) {
 	return ARM_DRIVER_OK;
 }
 
-template <board::Uart num>
-bool Uart<num>::IsByteReceived(void) {
+template <board::Uart num, uint32_t baudrate>
+bool Uart<num,baudrate>::IsByteReceived(void) {
 	assert(drv_!=NULL);
 	
 	LPC_USARTn_Type* USART_periph = ResolveType();

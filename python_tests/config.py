@@ -12,6 +12,9 @@ class Config():
         
         READ_MPU = 7
 
+        READ_TME = 8
+        READ_TME_BUNCH = 9
+
     class GetSdStatusRequest(Structure):
         _pack_ = 1
         _fields_ = [
@@ -87,6 +90,35 @@ class Config():
             ("T", c_ushort)
         ]
 
+    class ReadTmeRequest(Structure):
+        _pack_ = 1
+        _fields_ = [
+            ("sector_num", c_ubyte),
+            ("time", c_uint)
+        ]
+
+    class ReadTmeResponse(Structure):
+        _SD_PAGE_QUARTER_LENGTH = 128
+        _pack_ = 1
+        _fields_ = [
+            ("data", c_ubyte * _SD_PAGE_QUARTER_LENGTH)
+        ]
+
+    class ReadTmeBunchRequest(Structure):
+        _pack_ = 1
+        _fields_ = [
+            ("sector_num", c_ubyte),
+            ("time", c_uint),
+            ("step", c_uint),
+            ("qty", c_uint)
+        ]
+
+    class ReadTmeBunchResponse(Structure):
+        _SD_PAGE_LENGTH = 512
+        _pack_ = 1
+        _fields_ = [
+            ("data", c_ubyte * _SD_PAGE_LENGTH)
+        ]
 
 if __name__ == '__main__':
     tst : Config.ReadSdRequest = Config.ReadSdRequest()
