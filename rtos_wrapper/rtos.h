@@ -40,19 +40,12 @@ public:
 		return RtosWrapper::wGetTicks();
 	}
 	
-	inline static void IterrateCycleCount() {
-		cycle_count_++;
-	}
-	
-	inline static uint32_t GetCycleCount() {
-		return cycle_count_;
-	}
-	
 	inline static void IterrateSchedulerTime() {
 		scheduler_time_++;
 	}
 	
 	inline static uint32_t GetSchedulerTime() {
+		scheduler_time_ = RtosWrapper::wGetTicks() / configDATA_ACQUISITION_PERIOD_MS;
 		return scheduler_time_;
 	}
 	

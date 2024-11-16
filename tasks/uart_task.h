@@ -307,6 +307,6 @@ void UartTask<TBoard>::Execute() {
 			allocator_.deallocate((void*)buf_140, BUF_140_SIZE);
 			allocator_.deallocate((void*)buf_512, BUF_512_SIZE);
 		}
-		SleepUntil(25ms);
+		SleepUntil(1ms);
 	}
 }
