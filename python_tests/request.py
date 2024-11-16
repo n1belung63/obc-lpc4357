@@ -5,7 +5,7 @@ from json import JSONEncoder
 
 from config import Config 
 
-from typing import Any
+from typing import Any, Union
 
 
 def get_ports(VID : int, PID : int):
@@ -94,7 +94,7 @@ class Request():
         self.config = config
 
 
-    def post(self, command : Config.Commands, request_data = None, req_size : int = None):
+    def post(self, command : Config.Commands, request_data = None, req_size : Union[int, None] = None):
         data = bytes([command.value])
         if request_data != None:
             data += self.__request_data_to_bytes__(request_data, req_size)
@@ -113,7 +113,7 @@ class Request():
                 raise Exception('Wrong parameters')
 
     
-    def get(self, command : Config.Commands, request_data = None, req_size : int = None, resp_size : int = None) -> Any:      
+    def get(self, command : Config.Commands, request_data = None, req_size : Union[int, None] = None, resp_size : Union[int, None] = None) -> Any:      
         data = bytes([command.value])
         if request_data != None:
             data += self.__request_data_to_bytes__(request_data, req_size)
@@ -135,7 +135,7 @@ class Request():
                 raise Exception('Wrong parameters')
             elif res[0] == self.ACK:
                 if resp_size is None:
-                    resp_size = self.__get_body_size__(resp_type)
+                    resp_size : int = self.__get_body_size__(resp_type)
                 res = self.serial.read(resp_size)
                 memmove(pointer(resp_inst), res, resp_size)
                 return resp_inst
@@ -143,7 +143,7 @@ class Request():
         return None
 
     
-    def __request_data_to_bytes__(self, tme_body, req_size : int = None):
+    def __request_data_to_bytes__(self, tme_body, req_size : Union[int, None] = None):
         if isinstance(tme_body, bytes):
             data_bytes : bytes = tme_body
         else:

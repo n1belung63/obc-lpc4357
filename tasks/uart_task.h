@@ -242,10 +242,10 @@ void UartTask<TBoard>::Execute() {
 						break;
 					}
 					
-					if ( obc.GetSdStatus(board::Sd::kNum1) == board::Status::kWorked ) {
+					if ( obc.GetSdStatus(board::Sd::kNum1) != board::Status::kFailed ) {
 						res = data_storage.template ReadTmeByTime<board::Sd::kNum1>(sector_num, ((type*)buf_140)->time, buf_512);
 					}
-					else if ( obc.GetSdStatus(board::Sd::kNum2) == board::Status::kWorked ) {
+					else if ( obc.GetSdStatus(board::Sd::kNum2) != board::Status::kFailed ) {
 						res = data_storage.template ReadTmeByTime<board::Sd::kNum2>(sector_num, ((type*)buf_140)->time, buf_512);
 					}
 					else {
@@ -275,10 +275,10 @@ void UartTask<TBoard>::Execute() {
 						break;
 					}
 					
-					if ( obc.GetSdStatus(board::Sd::kNum1) == board::Status::kWorked ) {
+					if ( obc.GetSdStatus(board::Sd::kNum1) != board::Status::kFailed ) {
 						res = data_storage.template ReadTmeBunch<board::Sd::kNum1>(sector_num, ((type*)buf_140)->time, ((type*)buf_140)->step, ((type*)buf_140)->qty, buf_512);
 					}
-					else if ( obc.GetSdStatus(board::Sd::kNum2) == board::Status::kWorked ) {
+					else if ( obc.GetSdStatus(board::Sd::kNum2) != board::Status::kFailed ) {
 						res = data_storage.template ReadTmeBunch<board::Sd::kNum2>(sector_num, ((type*)buf_140)->time, ((type*)buf_140)->step, ((type*)buf_140)->qty, buf_512);
 					}
 					else {

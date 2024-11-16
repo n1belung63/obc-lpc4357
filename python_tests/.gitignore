@@ -161,3 +161,6 @@ cython_debug/
 
 logging/*.json
 logging/*.xml
+
+# not ignore
+!logs_example.log
